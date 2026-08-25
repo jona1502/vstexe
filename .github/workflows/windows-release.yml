@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Select version
         shell: pwsh
@@ -33,15 +33,20 @@ jobs:
 
       - name: Configure release
         shell: pwsh
-        run: cmake --preset windows-release "-DVOCALCHAIN_VERSION=$env:VOCALCHAIN_VERSION"
+        run: >-
+          cmake -S . -B build/windows-release-ci
+          -G "Visual Studio 17 2022" -A x64
+          "-DVOCALCHAIN_VERSION=$env:VOCALCHAIN_VERSION"
+          -DVOCALCHAIN_BUILD_TESTS=ON
+          -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
 
       - name: Build release
         shell: pwsh
-        run: cmake --build --preset windows-release
+        run: cmake --build build/windows-release-ci --config Release --parallel
 
       - name: Run tests
         shell: pwsh
-        run: ctest --preset windows-release
+        run: ctest --test-dir build/windows-release-ci -C Release --output-on-failure
 
       - name: Install Inno Setup
         shell: pwsh
@@ -49,7 +54,10 @@ jobs:
 
       - name: Build setup executable
         shell: pwsh
-        run: .\installer\windows\build-installer.ps1 -Version $env:VOCALCHAIN_VERSION
+        run: >-
+          .\installer\windows\build-installer.ps1
+          -Version $env:VOCALCHAIN_VERSION
+          -BuildDirectory build/windows-release-ci
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
