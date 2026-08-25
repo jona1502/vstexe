@@ -33,7 +33,7 @@ jobs:
 
       - name: Configure release
         shell: pwsh
-        run: cmake --preset windows-release -DVOCALCHAIN_VERSION=$env:VOCALCHAIN_VERSION
+        run: cmake --preset windows-release "-DVOCALCHAIN_VERSION=$env:VOCALCHAIN_VERSION"
 
       - name: Build release
         shell: pwsh
