@@ -6,7 +6,9 @@ namespace vocalchain {
 class PluginChainEngine final {
 public:
     static constexpr double sampleRate = 48000.0;
-    static constexpr int channelCount = 1;
+    static constexpr int inputChannelCount = 1;
+    static constexpr int outputChannelCount = 2;
+    static constexpr int pluginChannelCount = 1;
     PluginChainEngine();
     ~PluginChainEngine();
     juce::AudioDeviceManager& deviceManager() noexcept;

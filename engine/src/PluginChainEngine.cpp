@@ -19,13 +19,14 @@ juce::KnownPluginList& PluginChainEngine::knownPlugins() noexcept { return plugi
 
 juce::String PluginChainEngine::initialiseAudio(const juce::String& preferredInput)
 {
-    auto error = devices.initialise(channelCount, channelCount, nullptr, true, preferredInput);
+    auto error = devices.initialise(inputChannelCount, outputChannelCount, nullptr, true, preferredInput);
     if (error.isNotEmpty()) return error;
     juce::AudioDeviceManager::AudioDeviceSetup setup;
     devices.getAudioDeviceSetup(setup);
     setup.sampleRate = sampleRate;
     setup.inputChannels.clear(); setup.inputChannels.setBit(0);
-    setup.outputChannels.clear(); setup.outputChannels.setBit(0);
+    setup.outputChannels.clear();
+    setup.outputChannels.setRange(0, outputChannelCount, true);
     if (error = devices.setAudioDeviceSetup(setup, true); error.isNotEmpty()) return error;
     player.setProcessor(graph.get());
     devices.addAudioCallback(&player);
@@ -43,7 +44,7 @@ bool PluginChainEngine::addPlugin(const juce::PluginDescription& description, ju
 {
     auto instance = formats.createPluginInstance(description, sampleRate, 256, error);
     if (!instance) return false;
-    instance->setPlayConfigDetails(channelCount, channelCount, sampleRate, 256);
+    instance->setPlayConfigDetails(pluginChannelCount, pluginChannelCount, sampleRate, 256);
     if (auto node = graph->addNode(std::move(instance))) {
         chain.add({description, node, false});
         rebuildConnections();
@@ -127,6 +128,7 @@ void PluginChainEngine::rebuildConnections()
         graph->addConnection({{previous, 0}, {item.node->nodeID, 0}});
         previous = item.node->nodeID;
     }
-    graph->addConnection({{previous, 0}, {outputNode->nodeID, 0}});
+    for (int channel = 0; channel < outputChannelCount; ++channel)
+        graph->addConnection({{previous, 0}, {outputNode->nodeID, channel}});
 }
 }

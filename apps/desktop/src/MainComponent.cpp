@@ -10,7 +10,7 @@ public:
 }
 
 MainComponent::MainComponent()
-    : devices(engine.deviceManager(), 1, 1, 1, 1, false, false, true, false)
+    : devices(engine.deviceManager(), 1, 1, 2, 2, false, false, true, false)
 {
     for (auto* component : std::initializer_list<juce::Component*>{
              &devices, &availablePlugins, &chainList, &scan, &add, &remove,
