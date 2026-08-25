@@ -1,3 +1,7 @@
 add_executable(vocalchain_tests ChainStateTests.cpp)
 target_link_libraries(vocalchain_tests PRIVATE vocalchain_engine)
 add_test(NAME vocalchain_tests COMMAND vocalchain_tests)
+
+add_executable(virtualmic_protocol_tests VirtualMicProtocolTests.cpp)
+target_link_libraries(virtualmic_protocol_tests PRIVATE vocalchain_platform)
+add_test(NAME virtualmic_protocol_tests COMMAND virtualmic_protocol_tests)
