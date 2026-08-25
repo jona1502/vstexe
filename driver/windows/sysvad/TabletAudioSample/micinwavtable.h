@@ -21,13 +21,13 @@ Abstract:
 #define MICIN_DEVICE_MAX_CHANNELS           1       // Max Channels.
 #define MICIN_MIN_BITS_PER_SAMPLE_PCM       16      // Min Bits Per Sample
 #define MICIN_MAX_BITS_PER_SAMPLE_PCM       16      // Max Bits Per Sample
-#define MICIN_MIN_SAMPLE_RATE               8000    // Min Sample Rate
+#define MICIN_MIN_SAMPLE_RATE               48000   // Min Sample Rate
 #define MICIN_MAX_SAMPLE_RATE               48000   // Max Sample Rate
 
 //
 // Max # of pin instances.
 //
-#define MICIN_MAX_INPUT_STREAMS             5
+#define MICIN_MAX_INPUT_STREAMS             1
 
 //=============================================================================
 static 
@@ -251,15 +251,15 @@ MODE_AND_DEFAULT_FORMAT MicInPinSupportedDeviceModes[] =
     },
     {
         STATIC_AUDIO_SIGNALPROCESSINGMODE_SPEECH,
-        &MicInPinSupportedDeviceFormats[2].DataFormat, // 16KHz
+        &MicInPinSupportedDeviceFormats[SIZEOF_ARRAY(MicInPinSupportedDeviceFormats) - 1].DataFormat,
     },
     {
         STATIC_AUDIO_SIGNALPROCESSINGMODE_COMMUNICATIONS,
-        &MicInPinSupportedDeviceFormats[4].DataFormat, // 24KHz
+        &MicInPinSupportedDeviceFormats[SIZEOF_ARRAY(MicInPinSupportedDeviceFormats) - 1].DataFormat,
     },
     {
         STATIC_AUDIO_SIGNALPROCESSINGMODE_FAR_FIELD_SPEECH,
-        &MicInPinSupportedDeviceFormats[2].DataFormat, // 16KHz
+        &MicInPinSupportedDeviceFormats[SIZEOF_ARRAY(MicInPinSupportedDeviceFormats) - 1].DataFormat,
     },
 };
 
@@ -278,8 +278,8 @@ PIN_DEVICE_FORMATS_AND_MODES MicInPinDeviceFormatsAndModes[] =
     },
     {
         SystemCapturePin,
-        MicInPinSupportedDeviceFormats,
-        SIZEOF_ARRAY(MicInPinSupportedDeviceFormats),
+        &MicInPinSupportedDeviceFormats[SIZEOF_ARRAY(MicInPinSupportedDeviceFormats) - 1],
+        1,
         MicInPinSupportedDeviceModes,
         SIZEOF_ARRAY(MicInPinSupportedDeviceModes)
     }

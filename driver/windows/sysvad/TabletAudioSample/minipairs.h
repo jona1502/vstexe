@@ -506,16 +506,9 @@ ENDPOINT_MINIPAIR MicArray3Miniports =
 //
 // Render miniport pairs.
 //
-static
-PENDPOINT_MINIPAIR  g_RenderEndpoints[] = 
-{
-    &SpeakerMiniports,
-    &SpeakerHpMiniports,
-    &HdmiMiniports,
-    &SpdifMiniports,
-};
+static PENDPOINT_MINIPAIR* g_RenderEndpoints = nullptr;
 
-#define g_cRenderEndpoints  (SIZEOF_ARRAY(g_RenderEndpoints))
+#define g_cRenderEndpoints  0
 
 //=============================================================================
 //
@@ -525,9 +518,6 @@ static
 PENDPOINT_MINIPAIR  g_CaptureEndpoints[] = 
 {
     &MicInMiniports,
-    &MicArray1Miniports,
-    &MicArray2Miniports,
-    &MicArray3Miniports,
 };
 
 #define g_cCaptureEndpoints (SIZEOF_ARRAY(g_CaptureEndpoints))
