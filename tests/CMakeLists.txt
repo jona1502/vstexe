@@ -11,3 +11,7 @@ target_include_directories(pcm_ring_buffer_tests PRIVATE
     "${PROJECT_SOURCE_DIR}/driver/windows/vocalchain")
 target_link_libraries(pcm_ring_buffer_tests PRIVATE vocalchain_platform)
 add_test(NAME pcm_ring_buffer_tests COMMAND pcm_ring_buffer_tests)
+
+add_executable(output_routing_tests OutputRoutingTests.cpp)
+target_link_libraries(output_routing_tests PRIVATE vocalchain_engine)
+add_test(NAME output_routing_tests COMMAND output_routing_tests)

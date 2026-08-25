@@ -6,9 +6,15 @@
 physical microphone (mono, 48 kHz)
   -> JUCE AudioProcessorGraph
   -> ordered VST3 effect nodes
-  -> platform virtual microphone publisher
+  -> selected output device (virtual audio cable) or virtual microphone driver
   -> Discord / OBS / browser / other capture client
 ```
+
+Two publishing routes share that last stage. A virtual audio cable is the route
+that works on a stock Windows installation and is described in
+[VIRTUAL_CABLE.md](VIRTUAL_CABLE.md); the bundled kernel driver in
+[WINDOWS_VIRTUAL_MIC.md](WINDOWS_VIRTUAL_MIC.md) needs a release signature
+before it can take over.
 
 The audio callback owns no UI or persistence work. Graph mutations happen on
 the message thread and JUCE applies them at processing boundaries. Plug-in

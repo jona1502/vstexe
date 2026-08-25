@@ -203,12 +203,7 @@ MainComponent::MainComponent()
                        juce::dontSendNotification);
     const auto error = engine.initialiseAudio();
     if (error.isNotEmpty()) status.setText("Audio: " + error, juce::dontSendNotification);
-    else if (!engine.isVirtualMicrophoneRunning())
-        status.setText("Virtual microphone: " + engine.virtualMicrophoneStatus(),
-                       juce::dontSendNotification);
-    else
-        status.setText("VocalChain Virtual Mic is ready for Discord.",
-                       juce::dontSendNotification);
+    else status.setText(routingStatus(), juce::dontSendNotification);
     startTimerHz(10);
     setSize(1180, 780);
 }
@@ -383,6 +378,7 @@ void MainComponent::buttonClicked(juce::Button* button)
         monitor.setButtonText(enabled ? "Monitor on" : "Monitor off");
         monitor.setComponentID(enabled ? "primary" : "secondary");
         monitor.repaint();
+        status.setText(routingStatus(), juce::dontSendNotification);
     }
     else if (button == &save) savePreset();
     else if (button == &load) loadPreset();
@@ -518,3 +514,26 @@ void MainComponent::showError(const juce::String& title, const juce::String& mes
 }
 
 void MainComponent::refresh() { chainList.updateContent(); chainList.repaint(); }
+
+/*
+ * The processed chain leaves VocalChain through the selected output device, so
+ * the status line has to name that device and the capture endpoint another app
+ * has to pick. Monitoring gates that connection, which is why an inactive
+ * monitor is reported as the reason nothing is being published.
+ */
+juce::String MainComponent::routingStatus() const
+{
+    const auto output = engine.outputDeviceName();
+    if (output.isEmpty()) return "No output device selected.";
+    if (!engine.isMonitoringEnabled())
+        return "Monitor is off, so nothing reaches " + output + " yet.";
+
+    if (!vocalchain::PluginChainEngine::looksLikeVirtualCable(output))
+        return "Sending to " + output
+             + ". Select a virtual audio cable here to make other apps hear the chain.";
+
+    const auto capture = vocalchain::PluginChainEngine::pairedCaptureName(output);
+    if (capture.isEmpty())
+        return "Sending to " + output + ". Select its capture side in Discord or OBS.";
+    return "Sending to " + output + ". Select \"" + capture + "\" in Discord or OBS.";
+}

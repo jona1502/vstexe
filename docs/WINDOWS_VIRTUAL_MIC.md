@@ -1,5 +1,10 @@
 # Windows virtual microphone design
 
+> **Status:** development only. This driver has no Microsoft release signature,
+> so installing it requires Windows test-signing and therefore a machine with
+> Secure Boot disabled. The route that works on a stock installation is a
+> virtual audio cable, documented in [VIRTUAL_CABLE.md](VIRTUAL_CABLE.md).
+
 ## User-visible result
 
 The installed driver exposes one Windows capture endpoint named **VocalChain

@@ -1,4 +1,4 @@
-#ifndef AppVersion
+﻿#ifndef AppVersion
   #define AppVersion "0.1.0"
 #endif
 #ifndef AppBinary
@@ -37,6 +37,14 @@ VersionInfoProductVersion={#AppVersion}
 Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 
+[CustomMessages]
+english.CableTitle=Virtual audio cable required
+english.CableSubtitle=How other applications hear your chain
+english.CableBody=VocalChain processes your microphone, but Windows only lets a driver publish a microphone device.%n%nTo use the processed signal in Discord, OBS or any other application, install a virtual audio cable such as VB-CABLE (https://vb-audio.com/Cable/). VocalChain does not include one.%n%nIn VocalChain, select the cable as the output device and enable Monitor. In the other application, select the cable's capture side as the microphone.
+german.CableTitle=Virtuelles Audiokabel erforderlich
+german.CableSubtitle=Wie andere Anwendungen deine Kette hören
+german.CableBody=VocalChain bearbeitet dein Mikrofon, aber unter Windows kann nur ein Treiber ein Mikrofongerät bereitstellen.%n%nUm das bearbeitete Signal in Discord, OBS oder einer anderen Anwendung zu nutzen, installiere ein virtuelles Audiokabel wie VB-CABLE (https://vb-audio.com/Cable/). VocalChain bringt keines mit.%n%nWähle das Kabel in VocalChain als Ausgabegerät und aktiviere Monitor. Wähle in der anderen Anwendung die Aufnahmeseite des Kabels als Mikrofon.
+
 [Files]
 Source: "{#AppBinary}"; DestDir: "{app}"; DestName: "VocalChain.exe"; Flags: ignoreversion
 
@@ -49,3 +57,17 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Run]
 Filename: "{app}\VocalChain.exe"; Description: "{cm:LaunchProgram,VocalChain}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+{ The application alone cannot publish a microphone, so the requirement is
+  stated during setup rather than left for the user to discover in Discord. }
+var
+  CablePage: TOutputMsgWizardPage;
+
+procedure InitializeWizard();
+begin
+  CablePage := CreateOutputMsgPage(wpWelcome,
+    ExpandConstant('{cm:CableTitle}'),
+    ExpandConstant('{cm:CableSubtitle}'),
+    ExpandConstant('{cm:CableBody}'));
+end;

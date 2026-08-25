@@ -26,6 +26,12 @@ public:
     bool isMonitoringEnabled() const noexcept;
     bool isVirtualMicrophoneRunning() const noexcept;
     juce::String virtualMicrophoneStatus() const;
+    /** Name of the device the processed chain is written to, empty when closed. */
+    juce::String outputDeviceName() const;
+    /** Capture endpoint a listening app should select, empty when unknown. */
+    static juce::String pairedCaptureName(const juce::String& outputDeviceName);
+    /** True when the name matches a known virtual audio cable. */
+    static bool looksLikeVirtualCable(const juce::String& deviceName);
     juce::AudioPluginInstance* pluginAt(int) const;
     int pluginCount() const noexcept;
     ChainState captureState() const;

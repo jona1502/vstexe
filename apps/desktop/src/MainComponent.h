@@ -39,6 +39,7 @@ private:
     void loadPreset();
     void showError(const juce::String& title, const juce::String& message);
     void refresh();
+    juce::String routingStatus() const;
     void refreshAvailablePlugins();
     void loadPluginCache();
     void savePluginCache();

@@ -26,12 +26,28 @@ ctest --preset windows-release
 .\installer\windows\build-installer.ps1 -Version 0.1.0
 ```
 
+## Publishing route
+
+Releases ship the application only. The processed chain reaches other
+applications through a virtual audio cable the user installs separately, as
+described in [VIRTUAL_CABLE.md](VIRTUAL_CABLE.md). No cable is bundled: each is
+licensed by its vendor, and redistributing one requires an agreement with them.
+
+The installer therefore has no driver component and needs no elevation beyond a
+normal application install.
+
 ## Signing boundary
 
 The current GitHub installer is an application preview. It does not bundle the
 development/test-signed virtual microphone driver. Public x64 Windows systems
 require a Microsoft-trusted kernel driver signature; enabling global test mode
 inside a consumer installer is not an acceptable release path.
+
+Free code signing does not close this gap. The SignPath Foundation signs open
+source applications, not kernel drivers, and names itself as the publisher.
+Azure Trusted Signing supports neither EV certificates nor drivers. Partner
+Center anchors an account to an EV certificate, which is issued only to a
+registry-verifiable legal entity.
 
 Before calling a release production-ready:
 

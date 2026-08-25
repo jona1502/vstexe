@@ -6,12 +6,18 @@ export const site = {
   name: 'VocalChain',
   tagline: 'Your voice. Your chain. Everywhere.',
   description:
-    'Route your physical microphone through your own 64-bit VST3 effects and use the processed signal as a virtual microphone.',
+    'Route your physical microphone through your own 64-bit VST3 effects and send the processed signal wherever you need it, through a virtual audio cable.',
   repo: 'https://github.com/jona1502/vstexe',
   releases: 'https://github.com/jona1502/vstexe/releases',
   releasesApi: 'https://api.github.com/repos/jona1502/vstexe/releases/latest',
-  /** The Windows kernel driver is not release-signed yet, so downloads are previews. */
-  previewNotice: 'Preview build — the Windows virtual microphone driver is not release-signed yet.',
+  /**
+   * Windows lets only a driver publish a microphone, and ours is not
+   * release-signed yet. Until then the chain is published through a virtual
+   * audio cable the user installs separately, so the page has to say so.
+   */
+  previewNotice:
+    'Publishing needs a virtual audio cable such as VB-CABLE, installed separately. The bundled VocalChain microphone driver is not release-signed yet.',
+  cableUrl: 'https://vb-audio.com/Cable/',
 } as const;
 
 export const nav = [
@@ -31,7 +37,7 @@ export const facts = [
   { icon: 'waveform', title: '48 kHz mono signal path', detail: 'One fixed rate and channel count from capture to output.' },
   { icon: 'preset', title: 'Versioned chain presets', detail: 'Order, bypass and complete plug-in state in one JSON file.' },
   { icon: 'microphone', title: 'Native plug-in editors', detail: 'Open each plug-in in its own window, exactly as its vendor built it.' },
-  { icon: 'virtual-mic', title: 'Windows 11 and Fedora', detail: 'A WaveRT capture endpoint on Windows, a PipeWire source on Fedora.' },
+  { icon: 'virtual-mic', title: 'Works with any cable', detail: 'VB-CABLE, VoiceMeeter, Sonar and Wave Link are all recognised.' },
 ] as const;
 
 export const featureMatrix = [
@@ -52,8 +58,8 @@ export const featureMatrix = [
   },
   {
     icon: 'virtual-mic',
-    title: 'Virtual microphone',
-    detail: 'The processed signal appears as a capture device for other apps.',
+    title: 'Any capture client',
+    detail: 'Routed through a virtual audio cable, the chain reaches Discord, OBS and the rest.',
   },
   {
     icon: 'shield',
@@ -76,7 +82,7 @@ export const featureBenefits = [
   {
     title: 'Use one processed signal everywhere',
     detail:
-      'Build the chain once and select the VocalChain virtual microphone wherever you would pick a normal input device.',
+      'Build the chain once and select the cable wherever you would pick a normal input device. Every application reads the same processed signal.',
   },
 ] as const;
 
@@ -85,7 +91,7 @@ export const signalStages = [
   { label: 'Physical microphone', meta: 'mono · 48 kHz capture', kind: 'source' },
   { label: 'Noise suppression', meta: 'your VST3 plug-in', kind: 'effect' },
   { label: 'EQ → Compressor → De-esser', meta: 'ordered effect nodes', kind: 'effect' },
-  { label: 'VocalChain Virtual Microphone', meta: 'capture endpoint', kind: 'sink' },
+  { label: 'Virtual audio cable', meta: 'capture endpoint', kind: 'sink' },
 ] as const;
 
 export const signalPoints = [

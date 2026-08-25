@@ -2,15 +2,21 @@
 
 VocalChain is a Windows 11 and Fedora desktop application that processes a
 physical microphone through a user-defined chain of 64-bit VST3 effects and
-publishes the processed mono signal as a virtual microphone.
+publishes the processed mono signal as a microphone other applications can
+use.
 
 ## Download
 
 Windows x64 setup executables are published on the
 [GitHub Releases page](https://github.com/jona1502/vstexe/releases). Each setup
-has a matching SHA-256 checksum file. Until the Windows kernel driver receives a
-Microsoft release signature, these downloads are desktop-app previews and the
-development virtual microphone must be installed separately.
+has a matching SHA-256 checksum file.
+
+Publishing the chain requires a virtual audio cable such as
+[VB-CABLE](https://vb-audio.com/Cable/), installed separately. VocalChain's own
+kernel driver has no Microsoft release signature yet and therefore cannot be
+installed on a machine with Secure Boot enabled. See
+[docs/VIRTUAL_CABLE.md](docs/VIRTUAL_CABLE.md) for the routing, and
+[docs/WINDOWS_VIRTUAL_MIC.md](docs/WINDOWS_VIRTUAL_MIC.md) for the driver.
 
 ## MVP
 
@@ -19,8 +25,9 @@ development virtual microphone must be installed separately.
 - VST3 discovery and hosting
 - add, remove, reorder, bypass and edit plug-ins
 - versioned Vocal Chain presets including complete plug-in state
+- publishing through any virtual audio cable
 - PipeWire virtual source on Fedora
-- WDM/WaveRT virtual capture endpoint on Windows 11
+- WDM/WaveRT virtual capture endpoint on Windows 11 (driver not release-signed)
 
 ## Build
 
@@ -47,6 +54,9 @@ ctest --preset windows-debug
 
 A Visual Studio Developer PowerShell already has that environment loaded and
 needs no helper.
+
+Routing the chain into a virtual audio cable, the supported path today, is
+documented in [docs/VIRTUAL_CABLE.md](docs/VIRTUAL_CABLE.md).
 
 The Windows virtual microphone is a separate kernel driver. Development build,
 installation, diagnostics, Discord selection, and removal are documented in

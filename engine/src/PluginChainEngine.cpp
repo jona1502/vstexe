@@ -141,6 +141,37 @@ bool PluginChainEngine::isVirtualMicrophoneRunning() const noexcept
 }
 juce::String PluginChainEngine::virtualMicrophoneStatus() const { return virtualMicStatus; }
 
+juce::String PluginChainEngine::outputDeviceName() const
+{
+    juce::AudioDeviceManager::AudioDeviceSetup setup;
+    devices.getAudioDeviceSetup(setup);
+    return setup.outputDeviceName;
+}
+
+/*
+ * Virtual cables expose a render and a capture endpoint that belong together.
+ * Only the render side is selectable here, so the capture name is derived for
+ * the products whose naming is fixed; anything else stays unknown on purpose
+ * rather than guessing a device the user cannot find.
+ */
+juce::String PluginChainEngine::pairedCaptureName(const juce::String& outputDeviceName)
+{
+    if (outputDeviceName.containsIgnoreCase("CABLE Input"))
+        return outputDeviceName.replace("CABLE Input", "CABLE Output", true);
+    if (outputDeviceName.containsIgnoreCase("SteelSeries Sonar"))
+        return outputDeviceName;
+    return {};
+}
+
+bool PluginChainEngine::looksLikeVirtualCable(const juce::String& deviceName)
+{
+    static const char* const markers[] = {"CABLE", "VB-Audio", "Voicemeeter", "SteelSeries Sonar",
+                                          "Virtual Audio", "Virtual Cable", "Wave Link"};
+    for (const auto* marker : markers)
+        if (deviceName.containsIgnoreCase(marker)) return true;
+    return false;
+}
+
 juce::AudioPluginInstance* PluginChainEngine::pluginAt(int index) const
 {
     if (!juce::isPositiveAndBelow(index, chain.size())) return nullptr;

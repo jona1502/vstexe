@@ -80,8 +80,9 @@ jobs:
             $notes = @"
           Windows x64 desktop installer and SHA-256 checksum.
 
-          This preview contains the VocalChain desktop application. The virtual microphone
-          kernel driver is not bundled until its release package has been signed by Microsoft.
+          Publishing the processed chain needs a virtual audio cable such as VB-CABLE, installed
+          separately; see docs/VIRTUAL_CABLE.md for the routing. The bundled virtual microphone
+          kernel driver is not shipped until its release package has been signed by Microsoft.
           "@
             $notes | Set-Content .\out\windows\release-notes.md
             gh release create $env:GITHUB_REF_NAME $files `
