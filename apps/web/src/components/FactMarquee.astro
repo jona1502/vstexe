@@ -1,0 +1,54 @@
+---
+import { facts } from '../data/site';
+import FeatureIcon from './icons/Feature.astro';
+
+// Rendered twice so the -50% translation loops without a visible seam.
+const track = [...facts, ...facts];
+---
+
+<section aria-label="What VocalChain does" class="relative border-y border-white/[0.06] bg-ink-900/40 py-10">
+  <div class="marquee-mask overflow-hidden">
+    <ul class="marquee flex w-max gap-3">
+      {
+        track.map((fact, index) => (
+          <li
+            class="flex w-[320px] items-start gap-3 rounded-xl border border-white/[0.07] bg-ink-850/80 px-4 py-3.5"
+            aria-hidden={index >= facts.length ? 'true' : undefined}
+          >
+            <span class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-signal-400/10 text-signal-400">
+              <FeatureIcon name={fact.icon} class="size-4" />
+            </span>
+            <div>
+              <p class="text-sm font-medium text-mist-100">{fact.title}</p>
+              <p class="mt-1 text-xs leading-relaxed text-mist-600">{fact.detail}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .marquee {
+    animation: var(--animate-marquee);
+  }
+
+  .marquee:hover {
+    animation-play-state: paused;
+  }
+
+  .marquee-mask {
+    mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marquee {
+      animation: none;
+    }
+
+    .marquee-mask {
+      overflow-x: auto;
+    }
+  }
+</style>

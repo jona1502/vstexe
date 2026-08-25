@@ -29,3 +29,16 @@ export const heroOrbit = [
   { icon: 'preset', label: 'Chain presets', position: 'right-[14%] bottom-[13%]', delay: '-3.6s' },
   { icon: 'virtual-mic', label: 'Virtual microphone', position: 'left-1/2 -top-2 -translate-x-1/2', delay: '-4.8s' },
 ] as const;
+
+/**
+ * Verifiable capability statements. There are no users to quote yet, so the
+ * marquee carries facts instead of invented testimonials.
+ */
+export const facts = [
+  { icon: 'vst3', title: '64-bit VST3 hosting', detail: 'Scan and run the plug-ins already installed on your machine.' },
+  { icon: 'shield', title: 'Local audio processing', detail: 'Every sample stays on your machine. No account, no upload.' },
+  { icon: 'waveform', title: '48 kHz mono signal path', detail: 'One fixed rate and channel count from capture to output.' },
+  { icon: 'preset', title: 'Versioned chain presets', detail: 'Order, bypass and complete plug-in state in one JSON file.' },
+  { icon: 'microphone', title: 'Native plug-in editors', detail: 'Open each plug-in in its own window, exactly as its vendor built it.' },
+  { icon: 'virtual-mic', title: 'Windows 11 and Fedora', detail: 'A WaveRT capture endpoint on Windows, a PipeWire source on Fedora.' },
+] as const;
