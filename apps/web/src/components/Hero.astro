@@ -1,0 +1,91 @@
+---
+import { heroOrbit, site } from '../data/site';
+import Button from './Button.astro';
+import FeatureIcon from './icons/Feature.astro';
+import GitHub from './icons/GitHub.astro';
+import Windows from './icons/Windows.astro';
+---
+
+<section class="relative overflow-hidden pt-20 pb-16 sm:pt-28 lg:pt-32">
+  <div class="container-page relative">
+    <!-- Concept marks orbit the headline; decorative, so hidden from AT and small screens. -->
+    <div aria-hidden="true" class="pointer-events-none absolute inset-0 hidden lg:block">
+      {
+        heroOrbit.map((item) => (
+          <div class:list={['orbit absolute', item.position]} style={`animation-delay:${item.delay}`}>
+            <div class="flex size-12 items-center justify-center rounded-2xl border border-white/[0.08] bg-ink-900/70 text-signal-400 shadow-[0_18px_50px_-24px_rgba(0,0,0,0.9)] backdrop-blur-sm">
+              <FeatureIcon name={item.icon} class="size-5" />
+            </div>
+          </div>
+        ))
+      }
+    </div>
+
+    <div class="relative mx-auto flex max-w-3xl flex-col items-center text-center">
+      <a
+        href="#download"
+        class="mb-8 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] py-1.5 pr-4 pl-1.5 text-xs text-mist-500 transition-colors hover:border-white/[0.16] hover:text-mist-300"
+      >
+        <span class="rounded-full bg-signal-400/15 px-2 py-0.5 font-mono text-[11px] text-signal-300">Preview</span>
+        Windows x64 builds are available now
+      </a>
+
+      <h1 class="text-balance text-5xl leading-[1.03] font-bold tracking-[-0.03em] text-mist-100 sm:text-6xl lg:text-7xl">
+        Your voice.<br />Your chain.<br />
+        <span
+          class="bg-gradient-to-r from-signal-300 via-signal-400 to-signal-600 bg-clip-text text-transparent"
+          >Everywhere.</span
+        >
+      </h1>
+
+      <p class="mt-7 max-w-xl text-pretty text-lg leading-relaxed text-mist-500">
+        {site.description}
+      </p>
+
+      <div class="mt-10 flex flex-col items-center gap-3 sm:flex-row">
+        <Button href="#download" size="lg">
+          <Windows class="size-[15px]" />
+          Download for Windows
+        </Button>
+        <Button href={site.repo} variant="secondary" size="lg" external>
+          <GitHub class="size-[15px]" />
+          View source on GitHub
+        </Button>
+      </div>
+
+      <p class="mt-5 max-w-md text-xs leading-relaxed text-mist-600">{site.previewNotice}</p>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* Slow vertical drift keeps the marks alive without pulling focus. */
+  .orbit {
+    animation: orbit-float 9s ease-in-out infinite;
+  }
+
+  @keyframes orbit-float {
+    0%,
+    100% {
+      transform: translateY(-6px);
+    }
+    50% {
+      transform: translateY(6px);
+    }
+  }
+
+  /* The centred mark already carries a translate, so it drifts on its own axis. */
+  .orbit.-translate-x-1\/2 {
+    animation-name: orbit-float-centered;
+  }
+
+  @keyframes orbit-float-centered {
+    0%,
+    100% {
+      transform: translate(-50%, -6px);
+    }
+    50% {
+      transform: translate(-50%, 6px);
+    }
+  }
+</style>
