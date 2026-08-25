@@ -1,4 +1,5 @@
-add_library(vocalchain_engine STATIC src/ChainState.cpp src/PluginChainEngine.cpp)
+add_library(vocalchain_engine STATIC
+    src/ChainState.cpp src/PluginBrowsing.cpp src/PluginChainEngine.cpp)
 target_include_directories(vocalchain_engine PUBLIC include)
 target_link_libraries(vocalchain_engine PUBLIC
     vocalchain_platform

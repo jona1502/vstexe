@@ -19,3 +19,7 @@ add_test(NAME output_routing_tests COMMAND output_routing_tests)
 add_executable(update_checker_tests UpdateCheckerTests.cpp)
 target_link_libraries(update_checker_tests PRIVATE vocalchain_update)
 add_test(NAME update_checker_tests COMMAND update_checker_tests)
+
+add_executable(plugin_browsing_tests PluginBrowsingTests.cpp)
+target_link_libraries(plugin_browsing_tests PRIVATE vocalchain_engine)
+add_test(NAME plugin_browsing_tests COMMAND plugin_browsing_tests)

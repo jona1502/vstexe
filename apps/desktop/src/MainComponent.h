@@ -1,4 +1,5 @@
 #pragma once
+#include <vocalchain/PluginBrowsing.h>
 #include <vocalchain/PluginChainEngine.h>
 #include <vocalchain/UpdateChecker.h>
 #include <optional>
@@ -48,13 +49,19 @@ private:
     void refreshAvailablePlugins();
     void loadPluginCache();
     void savePluginCache();
+    juce::KnownPluginList::SortMethod selectedSort() const;
+    void loadSettings();
+    void saveSettings() const;
     void timerCallback() override;
     void run() override;
 
     vocalchain::PluginChainEngine engine;
     VocalChainLookAndFeel lookAndFeel;
     juce::AudioDeviceSelectorComponent devices;
-    juce::ComboBox availablePlugins;
+    juce::ComboBox availablePlugins, pluginSort;
+    juce::TextEditor pluginSearch;
+    /** The picker contents in display order; ids index into this, not the scan. */
+    juce::Array<juce::PluginDescription> visiblePlugins;
     juce::ListBox chainList{"Vocal Chain", this};
     juce::TextButton scan{"Scan VST3"}, remove{"Remove"};
     juce::TextButton up{"Up"}, down{"Down"}, bypass{"Bypass"}, open{"Open editor"};

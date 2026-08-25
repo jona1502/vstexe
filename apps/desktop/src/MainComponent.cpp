@@ -26,6 +26,11 @@ juce::File pluginDataDirectory()
         .getChildFile("VocalChain");
 }
 
+juce::File settingsFile()
+{
+    return pluginDataDirectory().getChildFile("settings.json");
+}
+
 juce::File pluginCacheFile()
 {
     return pluginDataDirectory().getChildFile("known-plugins.xml");
@@ -172,7 +177,7 @@ MainComponent::MainComponent()
 {
     setLookAndFeel(&lookAndFeel);
     for (auto* component : std::initializer_list<juce::Component*>{
-             &devices, &availablePlugins, &chainList, &scan, &remove,
+             &devices, &availablePlugins, &pluginSort, &pluginSearch, &chainList, &scan, &remove,
              &up, &down, &bypass, &open, &monitor, &save, &load, &checkUpdates,
              &installUpdate})
         addAndMakeVisible(component);
@@ -198,11 +203,25 @@ MainComponent::MainComponent()
     // Picking an effect is the whole gesture; there is nothing left to confirm.
     availablePlugins.onChange = [this] { addSelectedPlugin(); };
 
+    pluginSort.addItem("Name", 1);
+    pluginSort.addItem("Manufacturer", 2);
+    pluginSort.addItem("Category", 3);
+    pluginSort.onChange = [this] { saveSettings(); refreshAvailablePlugins(); };
+
+    pluginSearch.setTextToShowWhenEmpty("Search effects", juce::Colour(textFaint));
+    pluginSearch.setColour(juce::TextEditor::backgroundColourId, juce::Colour(surfaceRaised));
+    pluginSearch.setColour(juce::TextEditor::outlineColourId, juce::Colour(border));
+    pluginSearch.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(accentDeep));
+    pluginSearch.setColour(juce::TextEditor::textColourId, juce::Colour(text));
+    pluginSearch.setColour(juce::TextEditor::highlightColourId, juce::Colour(accentDeep));
+    pluginSearch.onTextChange = [this] { refreshAvailablePlugins(); };
+
     status.setText("Select a microphone, scan VST3 plug-ins, then build your Vocal Chain.",
                    juce::dontSendNotification);
     status.setColour(juce::Label::textColourId, juce::Colour(textMuted));
     status.setFont(juce::FontOptions(12.5f));
     addAndMakeVisible(status);
+    loadSettings();
     loadPluginCache();
     refreshAvailablePlugins();
     if (engine.knownPlugins().getNumTypes() > 0)
@@ -290,8 +309,15 @@ void MainComponent::resized()
     // Right panel: plug-in picker on the caption row, actions along the bottom.
     auto chainInner = chainPanel.reduced(16, 15);
     auto headerRow = chainInner.removeFromTop(34);
-    availablePlugins.setBounds(headerRow.removeFromRight(juce::jmin(314, headerRow.getWidth() - 120))
+    // The caption is painted at a fixed position, so its width stays reserved.
+    pluginSearch.setBounds(headerRow.removeFromRight(juce::jmin(360, headerRow.getWidth() - 120))
+                               .reduced(0, 3));
+
+    auto pickerRow = chainInner.removeFromTop(32);
+    availablePlugins.setBounds(pickerRow.removeFromRight(juce::jmin(300, pickerRow.getWidth() - 160))
                                    .reduced(0, 2));
+    pickerRow.removeFromRight(8);
+    pluginSort.setBounds(pickerRow.removeFromRight(150).reduced(0, 2));
     chainInner.removeFromTop(12);
 
     auto actionRow = chainInner.removeFromBottom(38);
@@ -436,12 +462,52 @@ void MainComponent::run()
     scanFinished.store(true);
 }
 
+/*
+ * The picker order is a preference, not session state: it is stored beside the
+ * plug-in cache and read back on the next launch. The search text deliberately
+ * is not — rediscovering yesterday's filter on an apparently short list would
+ * look like plug-ins had gone missing.
+ */
+juce::KnownPluginList::SortMethod MainComponent::selectedSort() const
+{
+    switch (pluginSort.getSelectedId()) {
+        case 2: return juce::KnownPluginList::sortByManufacturer;
+        case 3: return juce::KnownPluginList::sortByCategory;
+        default: return juce::KnownPluginList::sortAlphabetically;
+    }
+}
+
+void MainComponent::loadSettings()
+{
+    const auto stored = juce::JSON::parse(settingsFile()).getProperty("pluginSort", "name").toString();
+    const auto id = stored == "manufacturer" ? 2 : stored == "category" ? 3 : 1;
+    // A missing or damaged file must not keep the picker empty, so anything
+    // unrecognised falls back to sorting by name.
+    pluginSort.setSelectedId(id, juce::dontSendNotification);
+}
+
+void MainComponent::saveSettings() const
+{
+    pluginDataDirectory().createDirectory();
+    const auto name = pluginSort.getSelectedId() == 2   ? "manufacturer"
+                      : pluginSort.getSelectedId() == 3 ? "category"
+                                                        : "name";
+    juce::DynamicObject::Ptr settings = new juce::DynamicObject();
+    settings->setProperty("pluginSort", name);
+    settingsFile().replaceWithText(juce::JSON::toString(juce::var(settings.get())));
+}
+
 void MainComponent::refreshAvailablePlugins()
 {
-    // clear() notifies by default, which would re-enter the add handler.
+    // clear() notifies by default, which would re-enter the add handler on
+    // every keystroke in the search field.
     availablePlugins.clear(juce::dontSendNotification);
-    const auto types = engine.knownPlugins().getTypes();
-    for (int i = 0; i < types.size(); ++i) availablePlugins.addItem(types.getReference(i).name, i + 1);
+    const auto sort = selectedSort();
+    visiblePlugins = vocalchain::filterAndSortPlugins(engine.knownPlugins().getTypes(),
+                                                      pluginSearch.getText(), sort);
+    for (int i = 0; i < visiblePlugins.size(); ++i)
+        availablePlugins.addItem(vocalchain::pluginDisplayName(visiblePlugins.getReference(i), sort),
+                                 i + 1);
 }
 
 void MainComponent::loadPluginCache()
@@ -460,10 +526,10 @@ void MainComponent::savePluginCache()
 void MainComponent::addSelectedPlugin()
 {
     const int index = availablePlugins.getSelectedId() - 1;
-    const auto types = engine.knownPlugins().getTypes();
-    if (!juce::isPositiveAndBelow(index, types.size())) return;
+    if (!juce::isPositiveAndBelow(index, visiblePlugins.size())) return;
     juce::String error;
-    if (!engine.addPlugin(types.getReference(index), error)) showError("Could not load plug-in", error);
+    if (!engine.addPlugin(visiblePlugins.getReference(index), error))
+        showError("Could not load plug-in", error);
     // Back to the resting caption, otherwise picking the same effect a second
     // time is not a change and would never be reported.
     availablePlugins.setSelectedId(0, juce::dontSendNotification);
