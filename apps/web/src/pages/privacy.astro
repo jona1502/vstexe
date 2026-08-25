@@ -1,0 +1,57 @@
+---
+import LegalLayout from '../layouts/LegalLayout.astro';
+import { legal, site } from '../data/site';
+---
+
+<LegalLayout title="Datenschutz" description={`Wie diese Website mit Daten umgeht — ${site.name}.`}>
+  <h2>Kurzfassung</h2>
+  <p>
+    Diese Website ist eine statische Seite ohne Konto, ohne Tracking und ohne Werbung. Sie setzt
+    keine Cookies und bindet keine Schriftarten, Skripte oder Bilder von Dritten ein — alle Dateien
+    werden vom eigenen Server ausgeliefert.
+  </p>
+
+  <h2>Verantwortlicher</h2>
+  <address>
+    {legal.operator}<br />
+    {legal.street}<br />
+    {legal.city}<br />
+    {legal.country}<br />
+    {legal.email}
+  </address>
+
+  <h2>Server-Logfiles</h2>
+  <p>
+    Beim Abruf der Seite verarbeitet der Hosting-Anbieter technisch notwendige Daten wie IP-Adresse,
+    Zeitpunkt der Anfrage, abgerufene Datei, übertragene Datenmenge und User-Agent. Rechtsgrundlage
+    ist Art. 6 Abs. 1 lit. f DSGVO, das berechtigte Interesse am sicheren und störungsfreien Betrieb.
+    Diese Daten werden nicht mit anderen Quellen zusammengeführt.
+  </p>
+
+  <h2>Abruf der Download-Informationen von GitHub</h2>
+  <p>
+    Der Download-Button ermittelt die aktuelle Version über die öffentliche Programmierschnittstelle
+    von GitHub (<span class="font-mono text-xs">api.github.com</span>). Dabei wird Ihre IP-Adresse an
+    GitHub, Inc. übertragen; Gleiches gilt, wenn Sie einem Link zum Repository oder zu den Releases
+    folgen. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO, das berechtigte Interesse an der
+    Auslieferung der jeweils aktuellen Programmversion. Es gilt die
+    <a href="https://docs.github.com/site-policy/privacy-policies/github-privacy-statement" rel="noopener noreferrer" target="_blank">
+      Datenschutzerklärung von GitHub
+    </a>.
+  </p>
+
+  <h2>Die Anwendung selbst</h2>
+  <p>
+    {site.name} verarbeitet Audio ausschließlich lokal auf Ihrem Rechner. Die Anwendung überträgt
+    weder Audiodaten noch Nutzungsdaten an uns oder an Dritte, benötigt kein Konto und funktioniert
+    ohne Internetverbindung. Presets und der Plug-in-Cache liegen als Dateien in Ihrem eigenen
+    Benutzerverzeichnis.
+  </p>
+
+  <h2>Ihre Rechte</h2>
+  <p>
+    Ihnen stehen die Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung,
+    Datenübertragbarkeit und Widerspruch zu (Art. 15 bis 21 DSGVO) sowie ein Beschwerderecht bei
+    einer Aufsichtsbehörde (Art. 77 DSGVO). Wenden Sie sich dafür an die oben genannte Adresse.
+  </p>
+</LegalLayout>

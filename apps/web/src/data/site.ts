@@ -155,4 +155,28 @@ export const footerLinks = [
       { label: 'Releasing & signing', href: `${site.repo}/blob/main/docs/RELEASING.md`, external: true },
     ],
   },
+  {
+    heading: 'Legal',
+    links: [
+      { label: 'Impressum', href: '/impressum' },
+      { label: 'Datenschutz', href: '/privacy' },
+    ],
+  },
 ] as const;
+
+/**
+ * Imprint details required by § 5 DDG. Every TODO value must be replaced with
+ * real data before the site goes live — the legal pages render a visible
+ * warning while any placeholder is left in place.
+ */
+export const legal = {
+  operator: 'TODO: Vor- und Nachname',
+  street: 'TODO: Straße und Hausnummer',
+  city: 'TODO: PLZ und Ort',
+  country: 'Deutschland',
+  email: 'TODO: kontakt@example.com',
+  /** Only required for commercial operation; leave empty for a private project. */
+  vatId: '',
+} as const;
+
+export const isLegalDataComplete = !Object.values(legal).some((value) => value.startsWith('TODO'));

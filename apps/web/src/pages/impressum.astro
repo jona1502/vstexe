@@ -1,0 +1,53 @@
+---
+import LegalLayout from '../layouts/LegalLayout.astro';
+import { legal, site } from '../data/site';
+---
+
+<LegalLayout title="Impressum" description={`Anbieterkennzeichnung für ${site.name}.`}>
+  <h2>Angaben gemäß § 5 DDG</h2>
+  <address>
+    {legal.operator}<br />
+    {legal.street}<br />
+    {legal.city}<br />
+    {legal.country}
+  </address>
+
+  <h2>Kontakt</h2>
+  <p>E-Mail: {legal.email}</p>
+
+  {
+    legal.vatId && (
+      <>
+        <h2>Umsatzsteuer-Identifikationsnummer</h2>
+        <p>{legal.vatId}</p>
+      </>
+    )
+  }
+
+  <h2>Verantwortlich für den Inhalt</h2>
+  <p>{legal.operator}, Anschrift wie oben.</p>
+
+  <h2>Haftung für Inhalte</h2>
+  <p>
+    Als Diensteanbieter sind wir für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen
+    verantwortlich. Wir sind jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde
+    Informationen zu überwachen oder nach Umständen zu forschen, die auf eine rechtswidrige Tätigkeit
+    hinweisen. Verpflichtungen zur Entfernung oder Sperrung der Nutzung von Informationen nach den
+    allgemeinen Gesetzen bleiben hiervon unberührt.
+  </p>
+
+  <h2>Haftung für Links</h2>
+  <p>
+    Diese Seite verlinkt auf externe Websites, insbesondere auf das Projekt-Repository bei GitHub.
+    Auf deren Inhalte haben wir keinen Einfluss und übernehmen dafür keine Gewähr. Für die Inhalte
+    der verlinkten Seiten ist stets deren jeweiliger Anbieter verantwortlich.
+  </p>
+
+  <h2>Urheberrecht und Marken</h2>
+  <p>
+    Der Quellcode von {site.name} steht unter der im <a href={site.repo} rel="noopener noreferrer" target="_blank">
+      Repository
+    </a> angegebenen Lizenz. VST3 ist eine Marke der Steinberg Media Technologies GmbH; {site.name} ist
+    nicht mit Steinberg verbunden.
+  </p>
+</LegalLayout>

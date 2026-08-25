@@ -1,0 +1,73 @@
+---
+import Layout from './Layout.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import { isLegalDataComplete } from '../data/site';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<Layout title={title} description={description}>
+  <Nav />
+  <main class="pt-16">
+    <article class="container-page max-w-3xl py-20 sm:py-28">
+      <h1 class="text-4xl font-bold tracking-[-0.02em] text-mist-100">{title}</h1>
+
+      {
+        !isLegalDataComplete && (
+          <p class="mt-8 rounded-xl border border-amber-400/30 bg-amber-400/[0.07] p-4 text-sm leading-relaxed text-amber-200/90">
+            <strong class="font-medium">Platzhalter:</strong> Diese Seite enthält noch
+            TODO-Werte aus <span class="font-mono text-xs">src/data/site.ts</span>. Vor
+            Veröffentlichung müssen sie durch echte Angaben ersetzt werden.
+          </p>
+        )
+      }
+
+      <div class="prose-legal mt-10">
+        <slot />
+      </div>
+    </article>
+  </main>
+  <Footer />
+</Layout>
+
+<style is:global>
+  /* Scoped typography for the two legal pages; no plugin needed for this much. */
+  .prose-legal h2 {
+    margin-top: 2.5rem;
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: var(--color-mist-100);
+  }
+
+  .prose-legal p,
+  .prose-legal li {
+    margin-top: 0.75rem;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: var(--color-mist-500);
+  }
+
+  .prose-legal ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+  }
+
+  .prose-legal a {
+    color: var(--color-signal-300);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .prose-legal address {
+    margin-top: 0.75rem;
+    font-style: normal;
+    line-height: 1.7;
+    color: var(--color-mist-300);
+  }
+</style>
