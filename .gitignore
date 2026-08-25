@@ -5,3 +5,9 @@
 /.vscode/
 *.user
 *.log
+/driver/windows/sysvad/x64/
+/driver/windows/sysvad/ARM64/
+/driver/windows/sysvad/**/x64/
+/driver/windows/sysvad/**/ARM64/
+/driver/windows/sysvad/**/Debug/
+/driver/windows/sysvad/**/Release/
