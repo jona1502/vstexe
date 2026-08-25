@@ -120,7 +120,7 @@ MainComponent::MainComponent()
     setLookAndFeel(&lookAndFeel);
     for (auto* component : std::initializer_list<juce::Component*>{
              &devices, &availablePlugins, &chainList, &scan, &add, &remove,
-             &up, &down, &bypass, &open, &save, &load, &status})
+             &up, &down, &bypass, &open, &save, &load})
         addAndMakeVisible(component);
 
     for (auto* button : std::initializer_list<juce::Button*>{
@@ -165,33 +165,7 @@ void MainComponent::paint(juce::Graphics& g)
     g.setGradientFill(glow);
     g.fillRect(getLocalBounds());
 
-    auto content = getLocalBounds().reduced(24);
-    auto header = content.removeFromTop(68);
-    g.setColour(juce::Colour(accent));
-    g.fillRoundedRectangle(header.getX() + 1.0f, header.getY() + 13.0f, 38.0f, 38.0f, 11.0f);
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::FontOptions(19.0f, juce::Font::bold));
-    g.drawText("VC", header.removeFromLeft(40), juce::Justification::centred);
-    header.removeFromLeft(12);
-    g.setFont(juce::FontOptions(24.0f, juce::Font::bold));
-    g.drawText("VocalChain", header.removeFromLeft(170), juce::Justification::centredLeft);
-    g.setColour(juce::Colour(textMuted));
-    g.setFont(juce::FontOptions(13.0f));
-    g.drawText("REAL-TIME VOCAL PROCESSING", header.removeFromLeft(230),
-               juce::Justification::centredLeft);
-
-    const auto pulse = 0.55f + 0.25f * std::sin(animationPhase);
-    g.setColour(juce::Colour(success).withAlpha(pulse * 0.25f));
-    g.fillEllipse(static_cast<float>(getWidth() - 151), 37.0f, 18.0f, 18.0f);
-    g.setColour(juce::Colour(success));
-    g.fillEllipse(static_cast<float>(getWidth() - 146), 42.0f, 8.0f, 8.0f);
-    g.setColour(juce::Colour(textMuted));
-    g.setFont(juce::FontOptions(13.0f, juce::Font::bold));
-    g.drawText("AUDIO READY", getWidth() - 130, 28, 106, 36, juce::Justification::centredLeft);
-
     auto body = getLocalBounds().reduced(24);
-    body.removeFromTop(76);
-    body.removeFromBottom(52);
     auto left = body.removeFromLeft(330).toFloat();
     body.removeFromLeft(16);
     drawCard(g, left);
@@ -208,9 +182,7 @@ void MainComponent::paint(juce::Graphics& g)
 void MainComponent::resized()
 {
     auto area = getLocalBounds().reduced(24);
-    area.removeFromTop(76);
-    auto footer = area.removeFromBottom(44);
-    status.setBounds(footer.reduced(8, 4));
+    status.setBounds({});
 
     auto deviceCard = area.removeFromLeft(330);
     area.removeFromLeft(16);
@@ -290,10 +262,8 @@ void MainComponent::timerCallback()
     animationPhase += 0.045f;
     if (animationPhase > juce::MathConstants<float>::twoPi)
         animationPhase -= juce::MathConstants<float>::twoPi;
-    repaint(getWidth() - 160, 28, 140, 42);
     if (const auto selectedRow = chainList.getSelectedRow(); selectedRow >= 0)
         chainList.repaintRow(selectedRow);
-
 }
 
 void MainComponent::buttonClicked(juce::Button* button)
