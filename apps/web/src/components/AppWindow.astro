@@ -1,0 +1,129 @@
+---
+/**
+ * Faithful representation of the desktop window: every label below exists in
+ * apps/desktop/src/MainComponent.cpp. Used until a real capture is dropped
+ * into public/screenshots/app.png.
+ */
+const chain = [
+  { name: 'Noise Suppressor', vendor: 'Your VST3 vendor', state: 'ACTIVE' },
+  { name: 'Channel EQ', vendor: 'Your VST3 vendor', state: 'ACTIVE' },
+  { name: 'Compressor', vendor: 'Your VST3 vendor', state: 'ACTIVE' },
+  { name: 'De-esser', vendor: 'Your VST3 vendor', state: 'BYPASS' },
+];
+
+const chainButtons = ['Up', 'Down', 'Bypass', 'Remove'];
+---
+
+<div class="flex h-full flex-col bg-ink-900 text-left">
+  <!-- Title bar -->
+  <div class="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2.5">
+    <img src="/brand/voice.png" alt="" width="16" height="16" class="size-4 object-contain" />
+    <span class="text-[11px] font-medium tracking-tight text-mist-300">VocalChain</span>
+    <div class="ml-auto flex gap-1.5" aria-hidden="true">
+      <span class="size-2.5 rounded-full bg-white/10"></span>
+      <span class="size-2.5 rounded-full bg-white/10"></span>
+      <span class="size-2.5 rounded-full bg-white/10"></span>
+    </div>
+  </div>
+
+  <div class="grid flex-1 gap-3 p-3 sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.4fr)]">
+    <!-- Audio input panel -->
+    <div class="rounded-lg border border-white/[0.06] bg-ink-850 p-3.5">
+      <p class="font-mono text-[9px] tracking-[0.18em] text-mist-600">AUDIO INPUT</p>
+      <div class="mt-3 space-y-2.5">
+        <div>
+          <p class="text-[9px] text-mist-600">Input device</p>
+          <div class="mt-1 truncate rounded-md border border-white/[0.07] bg-ink-800 px-2.5 py-1.5 text-[11px] text-mist-300">
+            Microphone (USB Audio)
+          </div>
+        </div>
+        <div>
+          <p class="text-[9px] text-mist-600">Sample rate</p>
+          <div class="mt-1 rounded-md border border-white/[0.07] bg-ink-800 px-2.5 py-1.5 text-[11px] text-mist-300">
+            48000 Hz · 1 ch
+          </div>
+        </div>
+        <div class="flex gap-1.5 pt-0.5">
+          <span class="rounded-md border border-white/[0.07] bg-ink-800 px-2.5 py-1.5 text-[10px] text-mist-300">Scan VST3</span>
+          <span class="rounded-md bg-signal-400 px-2.5 py-1.5 text-[10px] font-medium text-ink-950">Monitor on</span>
+        </div>
+        <!-- Input level -->
+        <div class="flex h-9 items-end gap-[3px] pt-1" aria-hidden="true">
+          {
+            [38, 62, 45, 78, 92, 70, 54, 86, 61, 40, 72, 50, 66, 34, 58].map((height, index) => (
+              <span
+                class="animate-pulse-signal w-full rounded-sm bg-gradient-to-t from-signal-600/40 to-signal-400"
+                style={`height:${height}%;animation-delay:${index * 90}ms`}
+              />
+            ))
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Effect chain panel -->
+    <div class="flex flex-col rounded-lg border border-white/[0.06] bg-ink-850 p-3.5">
+      <div class="flex items-center justify-between">
+        <p class="font-mono text-[9px] tracking-[0.18em] text-mist-600">EFFECT CHAIN</p>
+        <div class="flex items-center gap-1.5">
+          <span class="rounded-md border border-white/[0.07] bg-ink-800 px-2 py-1 text-[10px] text-mist-500">
+            Choose a VST3 effect
+          </span>
+          <span class="rounded-md bg-signal-400 px-2 py-1 text-[10px] font-medium text-ink-950">Add</span>
+        </div>
+      </div>
+
+      <ul class="mt-3 space-y-1.5">
+        {
+          chain.map((plugin, index) => (
+            <li
+              class:list={[
+                'flex items-center gap-3 rounded-md border px-3 py-2',
+                index === 1
+                  ? 'border-signal-400/35 bg-signal-400/[0.07]'
+                  : 'border-white/[0.06] bg-ink-800',
+              ]}
+            >
+              <span class="w-4 font-mono text-[10px] text-mist-600">{index + 1}</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-[11px] text-mist-100">{plugin.name}</p>
+                <p class="font-mono text-[8px] tracking-[0.16em] text-mist-600">VST3 EFFECT</p>
+              </div>
+              <span
+                class:list={[
+                  'rounded px-1.5 py-0.5 font-mono text-[8px] tracking-[0.14em]',
+                  plugin.state === 'ACTIVE' ? 'bg-signal-400/15 text-signal-300' : 'bg-white/[0.06] text-mist-600',
+                ]}
+              >
+                {plugin.state}
+              </span>
+            </li>
+          ))
+        }
+      </ul>
+
+      <div class="mt-auto flex flex-wrap gap-1.5 pt-3">
+        {
+          chainButtons.map((label) => (
+            <span class="rounded-md border border-white/[0.07] bg-ink-800 px-2.5 py-1.5 text-[10px] text-mist-300">
+              {label}
+            </span>
+          ))
+        }
+        <span class="rounded-md bg-signal-400 px-2.5 py-1.5 text-[10px] font-medium text-ink-950">Open editor</span>
+        <span class="ml-auto rounded-md border border-white/[0.07] bg-ink-800 px-2.5 py-1.5 text-[10px] text-mist-300">
+          Save preset
+        </span>
+        <span class="rounded-md border border-white/[0.07] bg-ink-800 px-2.5 py-1.5 text-[10px] text-mist-300">
+          Load preset
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="flex items-center gap-2 border-t border-white/[0.06] px-4 py-2">
+    <span class="size-1.5 rounded-full bg-signal-400"></span>
+    <p class="truncate text-[10px] text-mist-500">VocalChain Virtual Mic is ready for Discord.</p>
+  </div>
+</div>
