@@ -21,6 +21,7 @@ $application = Join-Path $BuildDirectory 'apps\desktop\VocalChain_artefacts\Rele
 if (-not (Test-Path -LiteralPath $application)) {
     throw "Release application not found at $application. Build the windows-release preset first."
 }
+$application = (Resolve-Path -LiteralPath $application).Path
 
 $compilerCandidates = @(
     (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe'),
