@@ -34,13 +34,19 @@ cmake --build --preset linux-debug
 ctest --preset linux-debug
 ```
 
-On Windows, run the equivalent presets from a Visual Studio Developer PowerShell:
+On Windows, CMake and the MSVC toolchain ship inside Visual Studio and are not
+on the global `PATH`. Dot-source the helper once per shell, then run the
+equivalent presets:
 
 ```powershell
+. .\scripts\dev-shell.ps1
 cmake --preset windows-debug
 cmake --build --preset windows-debug
 ctest --preset windows-debug
 ```
+
+A Visual Studio Developer PowerShell already has that environment loaded and
+needs no helper.
 
 The Windows virtual microphone is a separate kernel driver. Development build,
 installation, diagnostics, Discord selection, and removal are documented in
