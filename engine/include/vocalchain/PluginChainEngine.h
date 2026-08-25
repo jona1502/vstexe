@@ -1,6 +1,6 @@
 #pragma once
 #include <vocalchain/ChainState.h>
-#include <juce_audio_devices/juce_audio_devices.h>
+#include <juce_audio_utils/juce_audio_utils.h>
 
 namespace vocalchain {
 class PluginChainEngine final {

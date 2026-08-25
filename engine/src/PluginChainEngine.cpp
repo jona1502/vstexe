@@ -120,7 +120,8 @@ bool PluginChainEngine::restoreState(const ChainState& state, juce::String& erro
 
 void PluginChainEngine::rebuildConnections()
 {
-    graph->clearConnections();
+    for (const auto& connection : graph->getConnections())
+        graph->removeConnection(connection);
     auto previous = inputNode->nodeID;
     for (auto& item : chain) {
         graph->addConnection({{previous, 0}, {item.node->nodeID, 0}});
