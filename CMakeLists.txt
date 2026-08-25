@@ -19,8 +19,8 @@ else()
     FetchContent_MakeAvailable(JUCE)
 endif()
 
-add_subdirectory(engine)
 add_subdirectory(platform)
+add_subdirectory(engine)
 add_subdirectory(apps/desktop)
 
 if(VOCALCHAIN_BUILD_TESTS)

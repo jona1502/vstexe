@@ -1,14 +1,57 @@
 #include <vocalchain/PluginChainEngine.h>
 
 namespace vocalchain {
+namespace {
+class VirtualMicrophoneSink final : public juce::AudioProcessor {
+public:
+    explicit VirtualMicrophoneSink(VirtualMicrophone& backend)
+        : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::mono(), true)),
+          microphone(backend)
+    {
+    }
+
+    void prepareToPlay(double, int) override {}
+    void releaseResources() override {}
+    bool isBusesLayoutSupported(const BusesLayout& layouts) const override
+    {
+        return layouts.getMainInputChannelSet() == juce::AudioChannelSet::mono()
+            && layouts.getMainOutputChannelSet().isDisabled();
+    }
+    void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) override
+    {
+        if (buffer.getNumChannels() > 0)
+            microphone.push(buffer.getReadPointer(0), buffer.getNumSamples());
+    }
+    juce::AudioProcessorEditor* createEditor() override { return nullptr; }
+    bool hasEditor() const override { return false; }
+    const juce::String getName() const override { return "Virtual microphone sink"; }
+    bool acceptsMidi() const override { return false; }
+    bool producesMidi() const override { return false; }
+    bool isMidiEffect() const override { return false; }
+    double getTailLengthSeconds() const override { return 0.0; }
+    int getNumPrograms() override { return 1; }
+    int getCurrentProgram() override { return 0; }
+    void setCurrentProgram(int) override {}
+    const juce::String getProgramName(int) override { return {}; }
+    void changeProgramName(int, const juce::String&) override {}
+    void getStateInformation(juce::MemoryBlock&) override {}
+    void setStateInformation(const void*, int) override {}
+
+private:
+    VirtualMicrophone& microphone;
+};
+} // namespace
+
 PluginChainEngine::PluginChainEngine()
 {
     formats.addDefaultFormats();
+    virtualMicrophone = VirtualMicrophone::createPlatformBackend();
     graph = std::make_unique<juce::AudioProcessorGraph>();
     inputNode = graph->addNode(std::make_unique<juce::AudioProcessorGraph::AudioGraphIOProcessor>(
         juce::AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode));
     outputNode = graph->addNode(std::make_unique<juce::AudioProcessorGraph::AudioGraphIOProcessor>(
         juce::AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode));
+    virtualMicNode = graph->addNode(std::make_unique<VirtualMicrophoneSink>(*virtualMicrophone));
     rebuildConnections();
 }
 
@@ -28,6 +71,10 @@ juce::String PluginChainEngine::initialiseAudio(const juce::String& preferredInp
     setup.outputChannels.clear();
     setup.outputChannels.setRange(0, outputChannelCount, true);
     if (error = devices.setAudioDeviceSetup(setup, true); error.isNotEmpty()) return error;
+    auto* audioDevice = devices.getCurrentAudioDevice();
+    virtualMicStatus = virtualMicrophone->start(
+        sampleRate, pluginChannelCount,
+        audioDevice != nullptr ? audioDevice->getCurrentBufferSizeSamples() : 256);
     player.setProcessor(graph.get());
     devices.addAudioCallback(&player);
     return {};
@@ -37,6 +84,7 @@ void PluginChainEngine::shutdownAudio()
 {
     devices.removeAudioCallback(&player);
     player.setProcessor(nullptr);
+    virtualMicrophone->stop();
     devices.closeAudioDevice();
 }
 
@@ -87,6 +135,11 @@ void PluginChainEngine::setMonitoringEnabled(bool enabled)
 }
 
 bool PluginChainEngine::isMonitoringEnabled() const noexcept { return monitoringEnabled; }
+bool PluginChainEngine::isVirtualMicrophoneRunning() const noexcept
+{
+    return virtualMicrophone->isRunning();
+}
+juce::String PluginChainEngine::virtualMicrophoneStatus() const { return virtualMicStatus; }
 
 juce::AudioPluginInstance* PluginChainEngine::pluginAt(int index) const
 {
@@ -141,5 +194,6 @@ void PluginChainEngine::rebuildConnections()
         for (int channel = 0; channel < outputChannelCount; ++channel)
             graph->addConnection({{previous, 0}, {outputNode->nodeID, channel}});
     }
+    graph->addConnection({{previous, 0}, {virtualMicNode->nodeID, 0}});
 }
 }

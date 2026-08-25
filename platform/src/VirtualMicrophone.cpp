@@ -1,6 +1,10 @@
 #include <vocalchain/VirtualMicrophone.h>
 
 namespace vocalchain {
+#if JUCE_WINDOWS
+std::unique_ptr<VirtualMicrophone> createWindowsVirtualMicrophone();
+#endif
+
 namespace {
 // The interface is wired before the privileged platform implementations so the
 // audio engine never needs to depend on PipeWire or WDK headers. This backend
@@ -25,6 +29,10 @@ public:
 
 std::unique_ptr<VirtualMicrophone> VirtualMicrophone::createPlatformBackend()
 {
+#if JUCE_WINDOWS
+    return createWindowsVirtualMicrophone();
+#else
     return std::make_unique<UnavailableVirtualMicrophone>();
+#endif
 }
 }

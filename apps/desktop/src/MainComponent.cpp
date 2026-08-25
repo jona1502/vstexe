@@ -165,6 +165,12 @@ MainComponent::MainComponent()
                        juce::dontSendNotification);
     const auto error = engine.initialiseAudio();
     if (error.isNotEmpty()) status.setText("Audio: " + error, juce::dontSendNotification);
+    else if (!engine.isVirtualMicrophoneRunning())
+        status.setText("Virtual microphone: " + engine.virtualMicrophoneStatus(),
+                       juce::dontSendNotification);
+    else
+        status.setText("VocalChain Virtual Mic is ready for Discord.",
+                       juce::dontSendNotification);
     startTimerHz(60);
     setSize(1120, 760);
 }

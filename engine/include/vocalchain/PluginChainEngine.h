@@ -1,5 +1,6 @@
 #pragma once
 #include <vocalchain/ChainState.h>
+#include <vocalchain/VirtualMicrophone.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 
 namespace vocalchain {
@@ -23,6 +24,8 @@ public:
     bool isBypassed(int) const;
     void setMonitoringEnabled(bool);
     bool isMonitoringEnabled() const noexcept;
+    bool isVirtualMicrophoneRunning() const noexcept;
+    juce::String virtualMicrophoneStatus() const;
     juce::AudioPluginInstance* pluginAt(int) const;
     int pluginCount() const noexcept;
     ChainState captureState() const;
@@ -39,8 +42,10 @@ private:
     juce::AudioProcessorPlayer player;
     juce::AudioPluginFormatManager formats;
     juce::KnownPluginList plugins;
+    std::unique_ptr<VirtualMicrophone> virtualMicrophone;
+    juce::String virtualMicStatus;
     std::unique_ptr<juce::AudioProcessorGraph> graph;
-    juce::AudioProcessorGraph::Node::Ptr inputNode, outputNode;
+    juce::AudioProcessorGraph::Node::Ptr inputNode, outputNode, virtualMicNode;
     juce::Array<HostedPlugin> chain;
     bool monitoringEnabled{};
 };
