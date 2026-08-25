@@ -19,7 +19,9 @@ private:
         {
             setUsingNativeTitleBar(true);
             setContentOwned(new MainComponent(), true);
-            centreWithSize(980, 680);
+            setResizable(true, false);
+            setResizeLimits(980, 680, 1600, 1050);
+            centreWithSize(1120, 760);
             setVisible(true);
         }
         void closeButtonPressed() override

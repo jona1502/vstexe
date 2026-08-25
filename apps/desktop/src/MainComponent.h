@@ -2,9 +2,24 @@
 #include <vocalchain/PluginChainEngine.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 
+class VocalChainLookAndFeel final : public juce::LookAndFeel_V4 {
+public:
+    VocalChainLookAndFeel();
+
+    void drawButtonBackground(juce::Graphics&, juce::Button&, const juce::Colour&,
+                              bool isHighlighted, bool isDown) override;
+    void drawButtonText(juce::Graphics&, juce::TextButton&,
+                        bool isHighlighted, bool isDown) override;
+    void drawComboBox(juce::Graphics&, int width, int height, bool isButtonDown,
+                      int buttonX, int buttonY, int buttonW, int buttonH,
+                      juce::ComboBox&) override;
+    void positionComboBoxText(juce::ComboBox&, juce::Label&) override;
+};
+
 class MainComponent final : public juce::Component,
                             private juce::ListBoxModel,
-                            private juce::Button::Listener {
+                            private juce::Button::Listener,
+                            private juce::Timer {
 public:
     MainComponent();
     ~MainComponent() override;
@@ -22,8 +37,10 @@ private:
     void loadPreset();
     void showError(const juce::String& title, const juce::String& message);
     void refresh();
+    void timerCallback() override;
 
     vocalchain::PluginChainEngine engine;
+    VocalChainLookAndFeel lookAndFeel;
     juce::AudioDeviceSelectorComponent devices;
     juce::ComboBox availablePlugins;
     juce::ListBox chainList{"Vocal Chain", this};
@@ -31,6 +48,7 @@ private:
     juce::TextButton up{"Up"}, down{"Down"}, bypass{"Bypass"}, open{"Open editor"};
     juce::TextButton save{"Save preset"}, load{"Load preset"};
     juce::Label status;
+    float animationPhase{};
     std::unique_ptr<juce::FileChooser> chooser;
     std::unique_ptr<juce::DocumentWindow> editorWindow;
 };
