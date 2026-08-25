@@ -62,4 +62,5 @@ private:
     juce::String pluginBeingScanned;
     std::unique_ptr<juce::FileChooser> chooser;
     std::unique_ptr<juce::DocumentWindow> editorWindow;
+    juce::AudioPluginInstance* editorPlugin{};
 };

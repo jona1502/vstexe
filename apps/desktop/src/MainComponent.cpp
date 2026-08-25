@@ -318,7 +318,12 @@ void MainComponent::buttonClicked(juce::Button* button)
     const int row = chainList.getSelectedRow();
     if (button == &scan) scanPlugins();
     else if (button == &add) addSelectedPlugin();
-    else if (button == &remove && row >= 0) { editorWindow.reset(); engine.removePlugin(row); refresh(); }
+    else if (button == &remove && row >= 0) {
+        editorWindow.reset();
+        editorPlugin = nullptr;
+        engine.removePlugin(row);
+        refresh();
+    }
     else if (button == &up && row > 0) { engine.movePlugin(row, row - 1); refresh(); chainList.selectRow(row - 1); }
     else if (button == &down && row + 1 < engine.pluginCount()) { engine.movePlugin(row, row + 1); refresh(); chainList.selectRow(row + 1); }
     else if (button == &bypass && row >= 0) {
@@ -409,19 +414,27 @@ void MainComponent::openSelectedPlugin()
 {
     auto* plugin = engine.pluginAt(chainList.getSelectedRow());
     if (!plugin) return;
+
+    if (editorWindow != nullptr && editorPlugin == plugin) {
+        editorWindow->setVisible(true);
+        editorWindow->toFront(true);
+        return;
+    }
+
+    // Destroy the previous editor before asking a processor for its active editor.
+    // Otherwise reopening the same plug-in can return an editor that is deleted when
+    // editorWindow is replaced, leaving a dangling pointer below.
+    editorWindow.reset();
+    editorPlugin = nullptr;
+
     auto* editor = plugin->createEditorIfNeeded();
     if (!editor) { showError("No editor", "This plug-in does not provide an editor."); return; }
-    if (editor->getWidth() < 420 || editor->getHeight() < 260) {
-        const auto scale = juce::jlimit(1.0f, 2.5f,
-            juce::jmax(420.0f / static_cast<float>(juce::jmax(1, editor->getWidth())),
-                       260.0f / static_cast<float>(juce::jmax(1, editor->getHeight()))));
-        editor->setScaleFactor(scale);
-        editor->setSize(juce::jmax(420, editor->getWidth()),
-                        juce::jmax(260, editor->getHeight()));
-    }
+
     editorWindow = std::make_unique<PluginEditorWindow>(plugin->getName());
+    editorPlugin = plugin;
     editorWindow->setUsingNativeTitleBar(true);
     editorWindow->setContentOwned(editor, true);
+    editorWindow->setResizable(editor->isResizable(), false);
     editorWindow->centreWithSize(editorWindow->getWidth(), editorWindow->getHeight());
     editorWindow->setVisible(true);
 }
@@ -443,6 +456,8 @@ void MainComponent::loadPreset()
     chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
         [this](const juce::FileChooser& fc) {
             try {
+                editorWindow.reset();
+                editorPlugin = nullptr;
                 juce::String error;
                 if (!engine.restoreState(vocalchain::ChainState::fromJson(fc.getResult().loadFileAsString()), error))
                     showError("Could not restore preset", error);
