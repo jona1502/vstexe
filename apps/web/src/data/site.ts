@@ -88,3 +88,18 @@ export const featureBenefits = [
       'Build the chain once and select the VocalChain virtual microphone wherever you would pick a normal input device.',
   },
 ] as const;
+
+/** Stages of the audio path described in docs/ARCHITECTURE.md. */
+export const signalStages = [
+  { label: 'Physical microphone', meta: 'mono · 48 kHz capture', kind: 'source' },
+  { label: 'Noise suppression', meta: 'your VST3 plug-in', kind: 'effect' },
+  { label: 'EQ → Compressor → De-esser', meta: 'ordered effect nodes', kind: 'effect' },
+  { label: 'VocalChain Virtual Microphone', meta: 'capture endpoint', kind: 'sink' },
+] as const;
+
+export const signalPoints = [
+  'The graph is rebuilt on the message thread, so reordering never interrupts capture.',
+  'Bypass keeps a plug-in loaded and its state intact; only its processing is skipped.',
+  'The publisher receives already processed mono float samples and never allocates.',
+  'Local monitoring is a separate switch, so you can hear the chain without echo.',
+] as const;
