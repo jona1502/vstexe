@@ -1,5 +1,4 @@
 #include "MainComponent.h"
-#include <cmath>
 
 namespace {
 // Mirrors the design tokens in apps/web/src/styles/global.css so the app and
@@ -196,7 +195,6 @@ MainComponent::MainComponent()
     status.setColour(juce::Label::textColourId, juce::Colour(textMuted));
     status.setFont(juce::FontOptions(12.5f));
     addAndMakeVisible(status);
-    inputLevel = engine.deviceManager().getInputLevelGetter();
     loadPluginCache();
     refreshAvailablePlugins();
     if (engine.knownPlugins().getNumTypes() > 0)
@@ -211,7 +209,7 @@ MainComponent::MainComponent()
     else
         status.setText("VocalChain Virtual Mic is ready for Discord.",
                        juce::dontSendNotification);
-    startTimerHz(60);
+    startTimerHz(10);
     setSize(1180, 780);
 }
 
@@ -245,8 +243,6 @@ void MainComponent::paint(juce::Graphics& g)
     drawCaption(g, "EFFECT CHAIN", chainPanel.reduced(16, 0).withY(chainPanel.getY() + 15).withHeight(18),
                 juce::Colour(textFaint));
 
-    paintInputMeter(g);
-
     // Status strip
     g.setColour(juce::Colour(border));
     g.fillRect(statusStrip.withHeight(1));
@@ -254,35 +250,6 @@ void MainComponent::paint(juce::Graphics& g)
     g.setColour(running ? juce::Colour(accent) : juce::Colour(textFaint));
     g.fillEllipse(static_cast<float>(statusStrip.getX() + 20),
                   static_cast<float>(statusStrip.getCentreY()) - 3.0f, 6.0f, 6.0f);
-}
-
-void MainComponent::paintInputMeter(juce::Graphics& g)
-{
-    if (meterArea.isEmpty()) return;
-
-    const auto count = static_cast<int>(meterHistory.size());
-    const auto gap = 3.0f;
-    const auto barWidth = (static_cast<float>(meterArea.getWidth()) - gap * static_cast<float>(count - 1))
-                        / static_cast<float>(count);
-    const auto bottom = static_cast<float>(meterArea.getBottom());
-    const auto fullHeight = static_cast<float>(meterArea.getHeight());
-
-    for (int i = 0; i < count; ++i) {
-        // Oldest sample on the left, newest on the right.
-        const auto value = meterHistory[static_cast<size_t>((meterWriteIndex + 1 + i) % count)];
-        const auto x = static_cast<float>(meterArea.getX()) + static_cast<float>(i) * (barWidth + gap);
-
-        // Idle track, so a silent input still reads as a meter rather than a stray rule.
-        g.setColour(juce::Colour(border).withAlpha(0.45f));
-        g.fillRoundedRectangle({x, static_cast<float>(meterArea.getY()), barWidth, fullHeight}, 2.0f);
-
-        const auto height = juce::jmax(2.0f, value * fullHeight);
-        const auto bar = juce::Rectangle<float>(x, bottom - height, barWidth, height);
-        juce::ColourGradient fill(juce::Colour(accentDeep), bar.getX(), bottom,
-                                   juce::Colour(accent), bar.getX(), static_cast<float>(meterArea.getY()), false);
-        g.setGradientFill(fill);
-        g.fillRoundedRectangle(bar, 2.0f);
-    }
 }
 
 void MainComponent::resized()
@@ -298,7 +265,7 @@ void MainComponent::resized()
     chainPanel = body;
 
     // Left panel: the device selector keeps its natural height so the controls
-    // and the meter stay grouped with it instead of drifting to the bottom.
+    // stay grouped with it instead of drifting to the bottom.
     auto inputInner = inputPanel.reduced(16, 15);
     inputInner.removeFromTop(26);
     devices.setBounds(inputInner.removeFromTop(juce::jmin(272, inputInner.getHeight())));
@@ -308,9 +275,6 @@ void MainComponent::resized()
     scan.setBounds(controlRow.removeFromLeft(112));
     controlRow.removeFromLeft(8);
     monitor.setBounds(controlRow.removeFromLeft(120));
-
-    inputInner.removeFromTop(16);
-    meterArea = inputInner.removeFromTop(46);
 
     // Right panel: plug-in picker on the caption row, actions along the bottom.
     auto chainInner = chainPanel.reduced(16, 15);
@@ -374,16 +338,6 @@ void MainComponent::paintListBoxItem(int row, juce::Graphics& g, int width, int 
 
 void MainComponent::timerCallback()
 {
-    // Shift a new peak into the meter history roughly every 60 ms.
-    if (++meterTick % 4 == 0 && inputLevel != nullptr) {
-        const auto level = static_cast<float>(inputLevel->getCurrentLevel());
-        const auto decibels = juce::Decibels::gainToDecibels(level, -60.0f);
-        meterWriteIndex = (meterWriteIndex + 1) % static_cast<int>(meterHistory.size());
-        meterHistory[static_cast<size_t>(meterWriteIndex)] =
-            juce::jmap(decibels, -60.0f, 0.0f, 0.0f, 1.0f);
-        repaint(meterArea);
-    }
-
     if (isThreadRunning()) {
         juce::String current;
         {
