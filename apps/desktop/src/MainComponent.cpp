@@ -167,19 +167,26 @@ void VocalChainLookAndFeel::positionComboBoxText(juce::ComboBox& box, juce::Labe
 
 MainComponent::MainComponent()
     : juce::Thread("VST3 plug-in scanner"),
-      devices(engine.deviceManager(), 1, 1, 2, 2, false, false, true, false)
+      devices(engine.deviceManager(), 1, 1, 2, 2, false, false, true, false),
+      updates(juce::JUCEApplication::getInstance()->getApplicationVersion(), pluginDataDirectory())
 {
     setLookAndFeel(&lookAndFeel);
     for (auto* component : std::initializer_list<juce::Component*>{
              &devices, &availablePlugins, &chainList, &scan, &add, &remove,
-             &up, &down, &bypass, &open, &monitor, &save, &load})
+             &up, &down, &bypass, &open, &monitor, &save, &load, &checkUpdates,
+             &installUpdate})
         addAndMakeVisible(component);
 
     for (auto* button : std::initializer_list<juce::Button*>{
-             &scan, &add, &remove, &up, &down, &bypass, &open, &monitor, &save, &load})
+             &scan, &add, &remove, &up, &down, &bypass, &open, &monitor, &save, &load,
+             &checkUpdates, &installUpdate})
         button->addListener(this);
 
     scan.setComponentID("secondary");
+    checkUpdates.setComponentID("secondary");
+    installUpdate.setComponentID("primary");
+    // Only shown once a newer release is actually available.
+    installUpdate.setVisible(false);
     add.setComponentID("primary");
     remove.setComponentID("danger");
     open.setComponentID("primary");
@@ -205,6 +212,7 @@ MainComponent::MainComponent()
     if (error.isNotEmpty()) status.setText("Audio: " + error, juce::dontSendNotification);
     else status.setText(routingStatus(), juce::dontSendNotification);
     startTimerHz(10);
+    if (updates.isDueForAutomaticCheck()) startUpdateCheck(false);
     setSize(1180, 780);
 }
 
@@ -243,7 +251,7 @@ void MainComponent::paint(juce::Graphics& g)
     g.fillRect(statusStrip.withHeight(1));
     const auto running = engine.isVirtualMicrophoneRunning();
     g.setColour(running ? juce::Colour(accent) : juce::Colour(textFaint));
-    g.fillEllipse(static_cast<float>(statusStrip.getX() + 20),
+    g.fillEllipse(static_cast<float>(statusTextArea.getX() - 16),
                   static_cast<float>(statusStrip.getCentreY()) - 3.0f, 6.0f, 6.0f);
 }
 
@@ -252,7 +260,14 @@ void MainComponent::resized()
     auto area = getLocalBounds();
 
     statusStrip = area.removeFromBottom(38);
-    status.setBounds(statusStrip.withTrimmedLeft(36).withTrimmedRight(20));
+    auto strip = statusStrip.reduced(12, 5);
+    checkUpdates.setBounds(strip.removeFromLeft(146));
+    if (installUpdate.isVisible()) {
+        strip.removeFromLeft(8);
+        installUpdate.setBounds(strip.removeFromLeft(158));
+    }
+    statusTextArea = strip.withTrimmedLeft(24).withTrimmedRight(8);
+    status.setBounds(statusTextArea);
 
     auto body = area.reduced(18);
     inputPanel = body.removeFromLeft(374);
@@ -380,6 +395,8 @@ void MainComponent::buttonClicked(juce::Button* button)
         monitor.repaint();
         status.setText(routingStatus(), juce::dontSendNotification);
     }
+    else if (button == &checkUpdates) startUpdateCheck(true);
+    else if (button == &installUpdate) startUpdateDownload();
     else if (button == &save) savePreset();
     else if (button == &load) loadPreset();
 }
@@ -514,6 +531,68 @@ void MainComponent::showError(const juce::String& title, const juce::String& mes
 }
 
 void MainComponent::refresh() { chainList.updateContent(); chainList.repaint(); }
+
+/*
+ * Update work reports through the same status label as everything else, so a
+ * check never steals the routing information for longer than it takes to
+ * answer. A failed check is reported but not dwelt on: being offline is not an
+ * error worth interrupting anyone over.
+ */
+void MainComponent::startUpdateCheck(bool requestedByUser)
+{
+    if (updates.isBusy()) return;
+    if (requestedByUser) status.setText("Checking for updates...", juce::dontSendNotification);
+    checkUpdates.setEnabled(false);
+    updates.check([this, requestedByUser](std::optional<vocalchain::AvailableUpdate> found,
+                                          juce::String error) {
+        checkUpdates.setEnabled(true);
+        if (error.isNotEmpty()) {
+            if (requestedByUser) status.setText(error, juce::dontSendNotification);
+            return;
+        }
+        updateCheckFinished(found, error);
+        if (!found.has_value() && requestedByUser)
+            status.setText("VocalChain is up to date.", juce::dontSendNotification);
+    });
+}
+
+void MainComponent::updateCheckFinished(std::optional<vocalchain::AvailableUpdate> found,
+                                        const juce::String&)
+{
+    availableUpdate = found;
+    if (!found.has_value()) return;
+
+    installUpdate.setButtonText("Install " + found->version);
+    installUpdate.setVisible(true);
+    status.setText("Version " + found->version + " is available.", juce::dontSendNotification);
+    resized();
+}
+
+void MainComponent::startUpdateDownload()
+{
+    if (!availableUpdate.has_value() || updates.isBusy()) return;
+    installUpdate.setEnabled(false);
+    checkUpdates.setEnabled(false);
+    status.setText("Downloading version " + availableUpdate->version + "...",
+                   juce::dontSendNotification);
+
+    updates.download(*availableUpdate, [this](juce::File setup, juce::String error) {
+        installUpdate.setEnabled(true);
+        checkUpdates.setEnabled(true);
+        if (error.isNotEmpty()) {
+            showError("Update failed", error);
+            status.setText(routingStatus(), juce::dontSendNotification);
+            return;
+        }
+        // The installer closes this process through the restart manager, so the
+        // engine is shut down first and the app asked to quit straight after.
+        if (!vocalchain::UpdateChecker::launchInstaller(setup)) {
+            showError("Update failed", "The installer could not be started.");
+            return;
+        }
+        juce::JUCEApplication::getInstance()->systemRequestedQuit();
+    });
+}
 
 /*
  * The processed chain leaves VocalChain through the selected output device, so

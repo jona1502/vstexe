@@ -5,6 +5,20 @@
 #endif
 
 namespace {
+#if JUCE_WINDOWS
+/*
+ * The installer names this mutex as its AppMutex, which is how a silent update
+ * knows VocalChain is running and can close it through the restart manager
+ * before replacing the executable. The handle stays open for the process
+ * lifetime and Windows releases it on exit.
+ */
+void claimRunningInstanceMutex()
+{
+    static HANDLE handle = CreateMutexW(nullptr, FALSE, L"VocalChainRunningInstance");
+    juce::ignoreUnused(handle);
+}
+#endif
+
 /** Paints the native title bar dark so the frame matches the window content. */
 void applyDarkTitleBar([[maybe_unused]] juce::Component& window)
 {
@@ -28,6 +42,9 @@ public:
     const juce::String getApplicationVersion() override { return JUCE_APPLICATION_VERSION_STRING; }
     void initialise(const juce::String&) override
     {
+#if JUCE_WINDOWS
+        claimRunningInstanceMutex();
+#endif
         window = std::make_unique<MainWindow>(getApplicationName());
     }
     void shutdown() override { window.reset(); }

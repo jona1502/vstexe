@@ -22,6 +22,7 @@ endif()
 
 add_subdirectory(platform)
 add_subdirectory(engine)
+add_subdirectory(update)
 add_subdirectory(apps/desktop)
 
 if(VOCALCHAIN_BUILD_TESTS)

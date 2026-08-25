@@ -1,5 +1,7 @@
 #pragma once
 #include <vocalchain/PluginChainEngine.h>
+#include <vocalchain/UpdateChecker.h>
+#include <optional>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <atomic>
 
@@ -40,6 +42,9 @@ private:
     void showError(const juce::String& title, const juce::String& message);
     void refresh();
     juce::String routingStatus() const;
+    void startUpdateCheck(bool requestedByUser);
+    void updateCheckFinished(std::optional<vocalchain::AvailableUpdate>, const juce::String& error);
+    void startUpdateDownload();
     void refreshAvailablePlugins();
     void loadPluginCache();
     void savePluginCache();
@@ -55,10 +60,15 @@ private:
     juce::TextButton up{"Up"}, down{"Down"}, bypass{"Bypass"}, open{"Open editor"};
     juce::TextButton monitor{"Monitor off"};
     juce::TextButton save{"Save preset"}, load{"Load preset"};
+    juce::TextButton checkUpdates{"Check for updates"};
+    juce::TextButton installUpdate{"Install update"};
     juce::Label status;
 
+    vocalchain::UpdateChecker updates;
+    std::optional<vocalchain::AvailableUpdate> availableUpdate;
+
     // Layout rectangles shared between resized() and paint().
-    juce::Rectangle<int> inputPanel, chainPanel, statusStrip;
+    juce::Rectangle<int> inputPanel, chainPanel, statusStrip, statusTextArea;
     std::atomic<float> scanProgress{};
     std::atomic<bool> scanFinished{};
     juce::CriticalSection scanStatusLock;

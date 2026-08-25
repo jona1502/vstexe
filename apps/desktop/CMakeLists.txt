@@ -8,7 +8,7 @@ juce_add_gui_app(VocalChain
 target_sources(VocalChain PRIVATE src/Main.cpp src/MainComponent.cpp)
 target_include_directories(VocalChain PRIVATE src)
 target_link_libraries(VocalChain PRIVATE
-    vocalchain_engine vocalchain_platform
+    vocalchain_engine vocalchain_platform vocalchain_update
     juce::juce_audio_utils juce::juce_gui_extra
     juce::juce_recommended_config_flags
     juce::juce_recommended_warning_flags)

@@ -15,3 +15,7 @@ add_test(NAME pcm_ring_buffer_tests COMMAND pcm_ring_buffer_tests)
 add_executable(output_routing_tests OutputRoutingTests.cpp)
 target_link_libraries(output_routing_tests PRIVATE vocalchain_engine)
 add_test(NAME output_routing_tests COMMAND output_routing_tests)
+
+add_executable(update_checker_tests UpdateCheckerTests.cpp)
+target_link_libraries(update_checker_tests PRIVATE vocalchain_update)
+add_test(NAME update_checker_tests COMMAND update_checker_tests)

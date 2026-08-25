@@ -26,6 +26,36 @@ ctest --preset windows-release
 .\installer\windows\build-installer.ps1 -Version 0.1.0
 ```
 
+## In-app updates
+
+The application checks for newer releases itself, so a tagged release reaches an
+installed copy without a manual download. `UpdateChecker` (`update/`) queries the
+public releases API at most once a day, records the timestamp in
+`%APPDATA%\VocalChain\update-check.json`, and offers an install button in the
+status strip. A second button there starts the check on demand.
+
+This constrains what a release may look like:
+
+- **The repository must stay public.** The check is unauthenticated; a private
+  repository answers `404` and no update is ever found.
+- **Every release needs both assets.** A release carrying the installer without
+  its `.sha256` is deliberately ignored, because the download could not be
+  verified. `build-installer.ps1` emits both, so this holds as long as releases
+  come from the workflow.
+- **Tags stay `vMAJOR.MINOR.PATCH`.** Versions are compared segment by segment,
+  so `0.1.10` correctly supersedes `0.1.9`.
+
+The installer is fetched, checked against the published SHA-256 and only then
+executed with `/SILENT /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS`. `AppMutex` in
+`VocalChain.iss` lets the restart manager close the running application before
+the executable is replaced, and the install location under `{localappdata}`
+means no elevation prompt appears.
+
+The checksum protects against a corrupted or intercepted download. It does not
+protect against a compromised GitHub account, because installer and checksum
+share one origin; only a code signature would. Updates are Windows-only, since
+`JUCE_USE_CURL=0` leaves the Linux build without TLS.
+
 ## Publishing route
 
 Releases ship the application only. The processed chain reaches other

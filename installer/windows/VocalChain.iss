@@ -19,6 +19,11 @@ DefaultDirName={localappdata}\Programs\VocalChain
 DefaultGroupName=VocalChain
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
+; The running application holds this mutex, so a silent update can close it
+; through the restart manager instead of failing to replace a locked file.
+AppMutex=VocalChainRunningInstance
+CloseApplications=yes
+RestartApplications=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDirectory}
