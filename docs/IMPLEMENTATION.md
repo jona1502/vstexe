@@ -27,7 +27,8 @@ processed signal for a two-hour soak test without xruns.
 
 - fork the Microsoft SYSVAD componentized sample into a dedicated WDK solution
 - expose one mono 48 kHz WaveRT capture endpoint
-- connect the user-mode engine through a versioned shared-memory ring buffer
+- connect the user-mode engine through a versioned KS packet transport and a
+  bounded kernel ring buffer
 - enforce explicit buffer ownership, sequence counters and silence on disconnect
 - create INF/CAT packaging, installer rollback and clean uninstall
 - validate with Driver Verifier and the applicable HLK audio playlist

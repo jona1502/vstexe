@@ -85,3 +85,6 @@ foreach ($project in $projects) {
         throw "Driver build failed for $project with exit code $($build.ExitCode)"
     }
 }
+
+$output = Join-Path $driverRoot "TabletAudioSample\$Platform\$Configuration"
+Write-Host "Driver build completed: $output"

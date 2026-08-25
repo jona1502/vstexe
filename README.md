@@ -26,5 +26,17 @@ cmake --build --preset linux-debug
 ctest --preset linux-debug
 ```
 
+On Windows, run the equivalent presets from a Visual Studio Developer PowerShell:
+
+```powershell
+cmake --preset windows-debug
+cmake --build --preset windows-debug
+ctest --preset windows-debug
+```
+
+The Windows virtual microphone is a separate kernel driver. Development build,
+installation, diagnostics, Discord selection, and removal are documented in
+[docs/WINDOWS_VIRTUAL_MIC.md](docs/WINDOWS_VIRTUAL_MIC.md).
+
 Platform delivery milestones are described in
 [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md).

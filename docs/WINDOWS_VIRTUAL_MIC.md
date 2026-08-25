@@ -52,6 +52,52 @@ normally through the system audio engine.
 - Development builds use a dedicated test certificate and Windows test-signing
   mode; release packages must not enable test-signing.
 
+## Development install on Windows 11
+
+Install Visual Studio 2022 Build Tools with Desktop C++ and Driver development,
+the Windows 11 SDK, and the matching WDK. Then open PowerShell as Administrator
+in the repository root. The management script builds the driver, creates a
+minimal INF/SYS/CAT package, manages the local development certificate, and
+creates the root-enumerated audio device.
+
+```powershell
+.\driver\windows\manage-driver.ps1 Install -EnableTestSigning
+```
+
+The first run enables Windows test-signing and stops. Restart Windows, open an
+Administrator PowerShell again, and run:
+
+```powershell
+.\driver\windows\manage-driver.ps1 Install
+```
+
+Secure Boot can prevent Windows test-signing from being enabled. Do not weaken a
+production machine's boot policy for a development build; use a dedicated test
+system or VM instead. A production release requires Microsoft-signed driver
+artifacts and does not use this development certificate.
+
+Check all three installation layers at any time without administrator rights:
+
+```powershell
+.\driver\windows\manage-driver.ps1 Status
+```
+
+`Device`, `Driver`, and `Endpoint` must all be available. Start VocalChain and
+select **VocalChain Microphone** as the input device in Discord. Local monitoring
+may remain off; it is a separate branch from the virtual microphone.
+
+For a clean development uninstall, use an Administrator PowerShell:
+
+```powershell
+.\driver\windows\manage-driver.ps1 Uninstall
+```
+
+This removes both the root device and its matching package from the Windows
+driver store. It deliberately leaves the development certificate and the global
+test-signing setting unchanged because either may be shared with other test
+drivers. Disable test-signing manually only after verifying that no other test
+driver needs it.
+
 ## Delivery sequence
 
 1. Freeze and test the protocol ABI.

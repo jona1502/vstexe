@@ -12,17 +12,12 @@ PnpLockDown = 1
 
 [SourceDisksFiles]
 tabletaudiosample.sys=222
-keywordDetectorContosoAdapter.dll=222
 
 [SignatureAttributes]
 tabletaudiosample.sys=SignatureAttributes.DRM
-keyworddetectorcontosoadapter.dll=SignatureAttributes.PETrust
 
 [SignatureAttributes.DRM]
 DRMLevel=1300
-
-[SignatureAttributes.PETrust]
-PETrust=true
 
 [Manufacturer]
 %MfgName%=SYSVAD,NT$ARCH$.10.0...22621
@@ -32,16 +27,12 @@ PETrust=true
 
 [DestinationDirs]
 SYSVAD_SA.CopyList=13 ; 13=Package's DriverStore directory
-KEYWORDDETECTORCONTOSOADAPTER.CopyList=13 ;
 
 ;======================================================
 ; SYSVAD_SA
 ;======================================================
 [SYSVAD_SA.CopyList]
 tabletaudiosample.sys
-
-[KEYWORDDETECTORCONTOSOADAPTER.CopyList]
-keyworddetectorcontosoadapter.dll
 
 [SYSVAD_SA.AddReg]
 HKR,,AssociatedFilters,,"wdmaud,swmidi,redbook"
@@ -67,17 +58,6 @@ HKR,Drivers\mixer\wdmaud.drv,Description,,%SYSVAD_SA.DeviceDesc%
 
 HKR,%MEDIA_CATEGORIES%\%MicInCustomNameGUID%,Name,,%MicInCustomName%
 
-
-[KEYWORDDETECTORCONTOSOADAPTER.AddReg]
-HKCR,CLSID\%KEYWORDDETECTORCONTOSOADAPTER_CLSID%,,,"KeywordDetectorContosoAdapter Class"
-HKCR,CLSID\%KEYWORDDETECTORCONTOSOADAPTER_CLSID%\InProcServer32,,0x00020000,%13%\keyworddetectorcontosoadapter.dll
-HKCR,CLSID\%KEYWORDDETECTORCONTOSOADAPTER_CLSID%\InProcServer32,ThreadingModel,,"Apartment"
-HKCR,CLSID\%KEYWORDDETECTORCONTOSOADAPTER_CLSID%\Version,,,"1.0"
-
-HKCR,CLSID\%KEYWORDDETECTORCONTOSOADAPTER_CLSID2%,,,"KeywordDetectorContosoAdapter2 Class"
-HKCR,CLSID\%KEYWORDDETECTORCONTOSOADAPTER_CLSID2%\InProcServer32,,0x00020000,%13%\keyworddetectorcontosoadapter.dll
-HKCR,CLSID\%KEYWORDDETECTORCONTOSOADAPTER_CLSID2%\InProcServer32,ThreadingModel,,"Apartment"
-HKCR,CLSID\%KEYWORDDETECTORCONTOSOADAPTER_CLSID2%\Version,,,"1.0"
 
 ;======================================================
 ; render interfaces: speaker (internal)
@@ -480,8 +460,9 @@ AddReg = AUDIOHW.AddReg
 [AUDIOHW.AddReg]
 ; FILE_DEVICE_SOUND
 HKR,,DeviceType,0x10001,0x0000001D
-; SDDL_DEVOBJ_SYS_ALL_ADM_RWX_WORLD_RWX_RES_RWX
-HKR,,Security,,"D:P(A;;GA;;;SY)(A;;GRGWGX;;;BA)(A;;GRGWGX;;;WD)(A;;GRGWGX;;;RC)"
+; LocalSystem and administrators retain full access; interactive users may
+; open the KS transport without granting the control surface to remote users.
+HKR,,Security,,"D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GRGWGX;;;IU)"
 
 
 ;======================================================
@@ -566,10 +547,6 @@ MicArray1CustomNameGUID = {6ae81ff4-203e-4fe1-88aa-f2d57775cd4a}
 MicArray2CustomNameGUID = {3fe0e3e1-ad16-4772-8382-4129169018ce}
 MicArray3CustomNameGUID = {c04bdb7c-2138-48da-9dd4-2af9ff2e58c2}
 MicInCustomNameGUID = {c545a101-0bb0-4e75-8d96-731d63b29f87}
-
-; Driver developers would replace this CLSID with their own keyword detector OEM adapter
-KEYWORDDETECTORCONTOSOADAPTER_CLSID = {6F7DBCC1-202E-498D-99C5-61C36C4EB2DC}
-KEYWORDDETECTORCONTOSOADAPTER_CLSID2 = {207F3D0C-5C79-496F-A94C-D3D2934DBFA9}
 
 ;Localizable
 
