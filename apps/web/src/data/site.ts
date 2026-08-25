@@ -127,3 +127,32 @@ export const buildCommands = [
   { prompt: '$', command: 'cmake --preset windows-release' },
   { prompt: '$', command: 'cmake --build --preset windows-release' },
 ] as const;
+
+export const footerLinks = [
+  {
+    heading: 'Product',
+    links: [
+      { label: 'Features', href: '#features' },
+      { label: 'Signal path', href: '#signal-path' },
+      { label: 'Presets', href: '#presets' },
+      { label: 'Download', href: '#download' },
+    ],
+  },
+  {
+    heading: 'Project',
+    links: [
+      { label: 'Source code', href: site.repo, external: true },
+      { label: 'Releases', href: site.releases, external: true },
+      { label: 'Architecture', href: `${site.repo}/blob/main/docs/ARCHITECTURE.md`, external: true },
+      { label: 'Windows virtual mic', href: `${site.repo}/blob/main/docs/WINDOWS_VIRTUAL_MIC.md`, external: true },
+    ],
+  },
+  {
+    heading: 'Support',
+    links: [
+      { label: 'Report an issue', href: `${site.repo}/issues`, external: true },
+      { label: 'Build from source', href: `${site.repo}#build`, external: true },
+      { label: 'Releasing & signing', href: `${site.repo}/blob/main/docs/RELEASING.md`, external: true },
+    ],
+  },
+] as const;

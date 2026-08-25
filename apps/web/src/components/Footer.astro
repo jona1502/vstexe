@@ -1,0 +1,58 @@
+---
+import { footerLinks, site } from '../data/site';
+import GitHub from './icons/GitHub.astro';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-white/[0.06] py-14">
+  <div class="container-page">
+    <div class="grid gap-10 md:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]">
+      <div>
+        <a href="/" class="flex items-center gap-2.5">
+          <img src="/brand/voice.png" alt="" width="24" height="24" class="size-6 object-contain" />
+          <span class="text-sm font-medium tracking-tight text-mist-100">{site.name}</span>
+        </a>
+        <p class="mt-4 max-w-xs text-[13px] leading-relaxed text-mist-600">{site.description}</p>
+        <a
+          href={site.repo}
+          rel="noopener noreferrer"
+          target="_blank"
+          aria-label="GitHub repository"
+          class="mt-5 inline-flex size-9 items-center justify-center rounded-full border border-white/[0.08] text-mist-500 transition-colors hover:border-white/20 hover:text-mist-100"
+        >
+          <GitHub class="size-4" />
+        </a>
+      </div>
+
+      {
+        footerLinks.map((group) => (
+          <div>
+            <p class="font-mono text-[11px] tracking-[0.18em] text-mist-600 uppercase">{group.heading}</p>
+            <ul class="mt-4 space-y-2.5">
+              {group.links.map((link) => (
+                <li>
+                  <a
+                    href={link.href}
+                    rel={'external' in link && link.external ? 'noopener noreferrer' : undefined}
+                    target={'external' in link && link.external ? '_blank' : undefined}
+                    class="text-[13px] text-mist-500 transition-colors hover:text-mist-100"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </div>
+
+    <div
+      class="mt-12 flex flex-col gap-3 border-t border-white/[0.06] pt-6 text-xs text-mist-600 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <p>© {year} {site.name}. Open source on GitHub.</p>
+      <p>VST3 is a trademark of Steinberg Media Technologies GmbH.</p>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,95 @@
+---
+import { site } from '../data/site';
+import Button from './Button.astro';
+import GitHub from './icons/GitHub.astro';
+import Windows from './icons/Windows.astro';
+---
+
+<section id="download" class="scroll-mt-24 border-t border-white/[0.06] py-28 sm:py-36">
+  <div class="container-page">
+    <div class="relative mx-auto flex max-w-3xl flex-col items-center text-center">
+      <div
+        aria-hidden="true"
+        class="pointer-events-none absolute -top-24 left-1/2 h-72 w-[36rem] -translate-x-1/2 rounded-full bg-signal-500/15 blur-[100px]"
+      >
+      </div>
+
+      <h2
+        class="relative text-balance text-4xl leading-[1.08] font-bold tracking-[-0.03em] text-mist-100 sm:text-5xl lg:text-6xl"
+      >
+        Make every microphone<br class="hidden sm:block" /> sound like
+        <span class="bg-gradient-to-r from-signal-300 to-signal-600 bg-clip-text text-transparent">yours.</span>
+      </h2>
+
+      <p class="relative mt-6 max-w-lg text-pretty leading-relaxed text-mist-500">
+        Install the desktop app, point it at your microphone and load the VST3 effects you already
+        have. The processed signal shows up as an input device.
+      </p>
+
+      <div class="relative mt-10 flex flex-col items-center gap-3 sm:flex-row">
+        <Button href={site.releases} size="lg" class="download-primary">
+          <Windows class="size-[15px]" />
+          <span data-download-label>Download for Windows</span>
+        </Button>
+        <Button href={site.repo} variant="secondary" size="lg" external>
+          <GitHub class="size-[15px]" />
+          View source on GitHub
+        </Button>
+      </div>
+
+      <p class="relative mt-5 text-xs text-mist-600">
+        <span data-download-meta>Windows 11 · x64 · setup executable with a SHA-256 checksum</span>
+      </p>
+
+      <p class="relative mt-3 max-w-md text-xs leading-relaxed text-mist-600">{site.previewNotice}</p>
+
+      <p data-download-other hidden class="relative mt-3 max-w-md text-xs leading-relaxed text-mist-600">
+        Not on Windows? Fedora is built from source today — the commands are above.
+      </p>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { site } from '../data/site';
+
+  const label = document.querySelector<HTMLElement>('[data-download-label]');
+  const meta = document.querySelector<HTMLElement>('[data-download-meta]');
+  const other = document.querySelector<HTMLElement>('[data-download-other]');
+  const button = document.querySelector<HTMLAnchorElement>('.download-primary');
+
+  const platform =
+    (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ??
+    navigator.userAgent;
+  const onWindows = /win/i.test(platform);
+
+  if (!onWindows && other) other.hidden = false;
+
+  interface ReleaseAsset {
+    name: string;
+    browser_download_url: string;
+    size: number;
+  }
+
+  // Resolve the newest setup executable so the button skips the releases page.
+  // Any failure leaves the server-rendered releases link in place.
+  const resolveLatest = async () => {
+    const response = await fetch(site.releasesApi, { headers: { Accept: 'application/vnd.github+json' } });
+    if (!response.ok) return;
+
+    const release = (await response.json()) as { tag_name?: string; assets?: ReleaseAsset[] };
+    const setup = release.assets?.find((asset) => asset.name.toLowerCase().endsWith('.exe'));
+    if (!setup || !button) return;
+
+    button.href = setup.browser_download_url;
+    if (label && release.tag_name) label.textContent = `Download for Windows · ${release.tag_name}`;
+    if (meta) {
+      const megabytes = (setup.size / 1024 / 1024).toFixed(1);
+      meta.textContent = `${setup.name} · ${megabytes} MB · SHA-256 checksum on the releases page`;
+    }
+  };
+
+  void resolveLatest().catch(() => {
+    /* Offline, rate limited or no release yet: the releases page still works. */
+  });
+</script>
