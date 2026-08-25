@@ -1,0 +1,3 @@
+add_library(vocalchain_platform STATIC src/VirtualMicrophone.cpp)
+target_include_directories(vocalchain_platform PUBLIC include)
+target_link_libraries(vocalchain_platform PUBLIC juce::juce_audio_basics)
