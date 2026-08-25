@@ -42,3 +42,49 @@ export const facts = [
   { icon: 'microphone', title: 'Native plug-in editors', detail: 'Open each plug-in in its own window, exactly as its vendor built it.' },
   { icon: 'virtual-mic', title: 'Windows 11 and Fedora', detail: 'A WaveRT capture endpoint on Windows, a PipeWire source on Fedora.' },
 ] as const;
+
+export const featureMatrix = [
+  {
+    icon: 'vst3',
+    title: 'VST3 effects',
+    detail: 'Scan your VST3 folders once; the result is cached between launches.',
+  },
+  {
+    icon: 'preset',
+    title: 'Reorder & bypass',
+    detail: 'Move any effect up or down and bypass it without losing its state.',
+  },
+  {
+    icon: 'waveform',
+    title: 'Presets',
+    detail: 'Save the whole chain as a versioned .vocalchain.json file.',
+  },
+  {
+    icon: 'virtual-mic',
+    title: 'Virtual microphone',
+    detail: 'The processed signal appears as a capture device for other apps.',
+  },
+  {
+    icon: 'shield',
+    title: 'Local processing',
+    detail: 'Audio never leaves the machine, so nothing depends on a service.',
+  },
+] as const;
+
+export const featureBenefits = [
+  {
+    title: 'Use plug-ins you already own',
+    detail:
+      'No bundled effects to learn and no subscription. VocalChain hosts the 64-bit VST3 effects already installed on your system.',
+  },
+  {
+    title: 'Keep processing on your machine',
+    detail:
+      'Capture, effects and publishing all run in one local process. There is no account, no upload and no network dependency.',
+  },
+  {
+    title: 'Use one processed signal everywhere',
+    detail:
+      'Build the chain once and select the VocalChain virtual microphone wherever you would pick a normal input device.',
+  },
+] as const;
