@@ -21,6 +21,8 @@ public:
     void movePlugin(int from, int to);
     void setBypassed(int, bool);
     bool isBypassed(int) const;
+    void setMonitoringEnabled(bool);
+    bool isMonitoringEnabled() const noexcept;
     juce::AudioPluginInstance* pluginAt(int) const;
     int pluginCount() const noexcept;
     ChainState captureState() const;
@@ -40,5 +42,6 @@ private:
     std::unique_ptr<juce::AudioProcessorGraph> graph;
     juce::AudioProcessorGraph::Node::Ptr inputNode, outputNode;
     juce::Array<HostedPlugin> chain;
+    bool monitoringEnabled{};
 };
 }

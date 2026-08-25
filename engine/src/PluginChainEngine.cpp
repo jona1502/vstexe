@@ -79,6 +79,15 @@ bool PluginChainEngine::isBypassed(int index) const
         && chain.getReference(index).bypassed;
 }
 
+void PluginChainEngine::setMonitoringEnabled(bool enabled)
+{
+    if (monitoringEnabled == enabled) return;
+    monitoringEnabled = enabled;
+    rebuildConnections();
+}
+
+bool PluginChainEngine::isMonitoringEnabled() const noexcept { return monitoringEnabled; }
+
 juce::AudioPluginInstance* PluginChainEngine::pluginAt(int index) const
 {
     if (!juce::isPositiveAndBelow(index, chain.size())) return nullptr;
@@ -128,7 +137,9 @@ void PluginChainEngine::rebuildConnections()
         graph->addConnection({{previous, 0}, {item.node->nodeID, 0}});
         previous = item.node->nodeID;
     }
-    for (int channel = 0; channel < outputChannelCount; ++channel)
-        graph->addConnection({{previous, 0}, {outputNode->nodeID, channel}});
+    if (monitoringEnabled) {
+        for (int channel = 0; channel < outputChannelCount; ++channel)
+            graph->addConnection({{previous, 0}, {outputNode->nodeID, channel}});
+    }
 }
 }

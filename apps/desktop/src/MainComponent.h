@@ -52,6 +52,7 @@ private:
     juce::ListBox chainList{"Vocal Chain", this};
     juce::TextButton scan{"Scan VST3"}, add{"Add"}, remove{"Remove"};
     juce::TextButton up{"Up"}, down{"Down"}, bypass{"Bypass"}, open{"Open editor"};
+    juce::TextButton monitor{"Monitor off"};
     juce::TextButton save{"Save preset"}, load{"Load preset"};
     juce::Label status;
     float animationPhase{};

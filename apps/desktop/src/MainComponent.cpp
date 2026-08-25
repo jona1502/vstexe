@@ -36,7 +36,10 @@ void drawCard(juce::Graphics& g, juce::Rectangle<float> bounds)
 class PluginEditorWindow final : public juce::DocumentWindow {
 public:
     explicit PluginEditorWindow(const juce::String& name)
-        : DocumentWindow(name, juce::Colours::black, closeButton, true) {}
+        : DocumentWindow(name, juce::Colours::black, closeButton, true)
+    {
+        setResizable(true, false);
+    }
     void closeButtonPressed() override { setVisible(false); }
 };
 }
@@ -132,17 +135,19 @@ MainComponent::MainComponent()
     setLookAndFeel(&lookAndFeel);
     for (auto* component : std::initializer_list<juce::Component*>{
              &devices, &availablePlugins, &chainList, &scan, &add, &remove,
-             &up, &down, &bypass, &open, &save, &load})
+             &up, &down, &bypass, &open, &monitor, &save, &load})
         addAndMakeVisible(component);
 
     for (auto* button : std::initializer_list<juce::Button*>{
-             &scan, &add, &remove, &up, &down, &bypass, &open, &save, &load})
+             &scan, &add, &remove, &up, &down, &bypass, &open, &monitor, &save, &load})
         button->addListener(this);
 
     scan.setComponentID("secondary");
     add.setComponentID("primary");
     remove.setComponentID("danger");
     open.setComponentID("primary");
+    monitor.setClickingTogglesState(true);
+    monitor.setToggleState(engine.isMonitoringEnabled(), juce::dontSendNotification);
     chainList.setRowHeight(68);
     chainList.setOutlineThickness(0);
     chainList.getViewport()->setScrollBarsShown(true, false);
@@ -228,6 +233,8 @@ void MainComponent::resized()
     bypass.setBounds(actionRow.removeFromLeft(90).reduced(0, 3));
     actionRow.removeFromLeft(7);
     open.setBounds(actionRow.removeFromLeft(126).reduced(0, 3));
+    actionRow.removeFromLeft(7);
+    monitor.setBounds(actionRow.removeFromLeft(118).reduced(0, 3));
 
     chainCard.removeFromBottom(10);
     auto pluginRow = chainCard.removeFromTop(44);
@@ -319,6 +326,13 @@ void MainComponent::buttonClicked(juce::Button* button)
         chainList.repaintRow(row);
     }
     else if (button == &open) openSelectedPlugin();
+    else if (button == &monitor) {
+        const auto enabled = monitor.getToggleState();
+        engine.setMonitoringEnabled(enabled);
+        monitor.setButtonText(enabled ? "Monitor on" : "Monitor off");
+        monitor.setComponentID(enabled ? "primary" : "secondary");
+        monitor.repaint();
+    }
     else if (button == &save) savePreset();
     else if (button == &load) loadPreset();
 }
@@ -397,10 +411,18 @@ void MainComponent::openSelectedPlugin()
     if (!plugin) return;
     auto* editor = plugin->createEditorIfNeeded();
     if (!editor) { showError("No editor", "This plug-in does not provide an editor."); return; }
+    if (editor->getWidth() < 420 || editor->getHeight() < 260) {
+        const auto scale = juce::jlimit(1.0f, 2.5f,
+            juce::jmax(420.0f / static_cast<float>(juce::jmax(1, editor->getWidth())),
+                       260.0f / static_cast<float>(juce::jmax(1, editor->getHeight()))));
+        editor->setScaleFactor(scale);
+        editor->setSize(juce::jmax(420, editor->getWidth()),
+                        juce::jmax(260, editor->getHeight()));
+    }
     editorWindow = std::make_unique<PluginEditorWindow>(plugin->getName());
     editorWindow->setUsingNativeTitleBar(true);
-    editorWindow->setContentOwned(editor, false);
-    editorWindow->centreWithSize(editor->getWidth(), editor->getHeight());
+    editorWindow->setContentOwned(editor, true);
+    editorWindow->centreWithSize(editorWindow->getWidth(), editorWindow->getHeight());
     editorWindow->setVisible(true);
 }
 
