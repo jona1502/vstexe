@@ -4,6 +4,14 @@ VocalChain is a Windows 11 and Fedora desktop application that processes a
 physical microphone through a user-defined chain of 64-bit VST3 effects and
 publishes the processed mono signal as a virtual microphone.
 
+## Download
+
+Windows x64 setup executables are published on the
+[GitHub Releases page](https://github.com/jona1502/vstexe/releases). Each setup
+has a matching SHA-256 checksum file. Until the Windows kernel driver receives a
+Microsoft release signature, these downloads are desktop-app previews and the
+development virtual microphone must be installed separately.
+
 ## MVP
 
 - Windows 11 and Fedora Linux
@@ -40,3 +48,5 @@ installation, diagnostics, Discord selection, and removal are documented in
 
 Platform delivery milestones are described in
 [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
+Release creation and signing requirements are described in
+[docs/RELEASING.md](docs/RELEASING.md).
