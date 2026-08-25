@@ -1,0 +1,35 @@
+---
+interface Props {
+  href: string;
+  variant?: 'primary' | 'secondary' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
+  external?: boolean;
+  class?: string;
+}
+
+const { href, variant = 'primary', size = 'md', external = false, class: className = '' } = Astro.props;
+
+const base =
+  'inline-flex items-center justify-center gap-2 rounded-full font-medium whitespace-nowrap transition duration-200';
+
+const variants = {
+  primary:
+    'bg-signal-400 text-ink-950 shadow-[0_0_0_1px_rgba(56,223,224,0.5),0_10px_40px_-12px_rgba(56,223,224,0.65)] hover:bg-signal-300 hover:shadow-[0_0_0_1px_rgba(125,242,238,0.6),0_14px_50px_-10px_rgba(56,223,224,0.8)]',
+  secondary:
+    'border border-white/10 bg-white/[0.03] text-mist-100 hover:border-white/20 hover:bg-white/[0.07]',
+  ghost: 'text-mist-500 hover:text-mist-100',
+} as const;
+
+const sizes = {
+  sm: 'h-9 px-4 text-sm',
+  md: 'h-11 px-5 text-sm',
+  lg: 'h-13 px-7 text-base',
+} as const;
+
+const rel = external ? 'noopener noreferrer' : undefined;
+const target = external ? '_blank' : undefined;
+---
+
+<a href={href} rel={rel} target={target} class:list={[base, variants[variant], sizes[size], className]}>
+  <slot />
+</a>

@@ -1,0 +1,111 @@
+---
+import { nav, site } from '../data/site';
+import Button from './Button.astro';
+import GitHub from './icons/GitHub.astro';
+---
+
+<header
+  id="site-nav"
+  data-scrolled="false"
+  class="fixed inset-x-0 top-0 z-50 border-b border-transparent transition-colors duration-300 data-[scrolled=true]:border-white/[0.07] data-[scrolled=true]:bg-ink-950/70 data-[scrolled=true]:backdrop-blur-xl"
+>
+  <div class="container-page flex h-16 items-center justify-between gap-6">
+    <a href="/" class="group flex items-center gap-2.5" aria-label={`${site.name} home`}>
+      <img
+        src="/brand/voice.png"
+        alt=""
+        width="28"
+        height="28"
+        class="size-7 rounded-md object-contain transition-transform duration-300 group-hover:scale-105"
+      />
+      <span class="text-[15px] font-medium tracking-tight text-mist-100">{site.name}</span>
+    </a>
+
+    <nav aria-label="Primary" class="hidden items-center gap-7 md:flex">
+      {
+        nav.map((item) => (
+          <a
+            href={item.href}
+            rel={'external' in item && item.external ? 'noopener noreferrer' : undefined}
+            target={'external' in item && item.external ? '_blank' : undefined}
+            class="text-sm text-mist-500 transition-colors hover:text-mist-100"
+          >
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="flex items-center gap-2">
+      <a
+        href={site.repo}
+        rel="noopener noreferrer"
+        target="_blank"
+        aria-label="GitHub repository"
+        class="hidden size-9 items-center justify-center rounded-full text-mist-500 transition-colors hover:bg-white/5 hover:text-mist-100 sm:flex"
+      >
+        <GitHub class="size-[18px]" />
+      </a>
+      <Button href="#download" size="sm">Download</Button>
+
+      <button
+        type="button"
+        id="nav-toggle"
+        aria-expanded="false"
+        aria-controls="nav-mobile"
+        class="flex size-9 items-center justify-center rounded-full text-mist-300 transition-colors hover:bg-white/5 md:hidden"
+      >
+        <span class="sr-only">Toggle navigation</span>
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" class="size-5">
+          <path d="M3 6h14M3 13h14" stroke-linecap="round"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="nav-mobile" hidden class="border-t border-white/[0.07] bg-ink-950/95 backdrop-blur-xl md:hidden">
+    <nav aria-label="Primary mobile" class="container-page flex flex-col py-2">
+      {
+        nav.map((item) => (
+          <a
+            href={item.href}
+            rel={'external' in item && item.external ? 'noopener noreferrer' : undefined}
+            target={'external' in item && item.external ? '_blank' : undefined}
+            class="py-2.5 text-sm text-mist-500 transition-colors hover:text-mist-100"
+          >
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+</header>
+
+<script>
+  const header = document.getElementById('site-nav');
+  const toggle = document.getElementById('nav-toggle');
+  const mobile = document.getElementById('nav-mobile');
+
+  if (header) {
+    // Swap the blurred backdrop in as soon as content passes under the bar.
+    const sync = () => header.setAttribute('data-scrolled', String(window.scrollY > 8));
+    sync();
+    window.addEventListener('scroll', sync, { passive: true });
+  }
+
+  if (toggle && mobile) {
+    toggle.addEventListener('click', () => {
+      const open = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!open));
+      mobile.hidden = open;
+    });
+
+    // Anchor links inside the sheet should close it before scrolling.
+    mobile.addEventListener('click', (event) => {
+      if ((event.target as HTMLElement).closest('a')) {
+        toggle.setAttribute('aria-expanded', 'false');
+        mobile.hidden = true;
+      }
+    });
+  }
+</script>
