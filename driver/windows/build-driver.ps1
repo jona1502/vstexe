@@ -9,12 +9,17 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $driverRoot = Join-Path $PSScriptRoot 'sysvad'
-$solution = Join-Path $driverRoot 'sysvad.sln'
+$projects = @(
+    (Join-Path $driverRoot 'EndpointsCommon\EndpointsCommon.vcxproj'),
+    (Join-Path $driverRoot 'TabletAudioSample\TabletAudioSample.vcxproj')
+)
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 $windowsKits = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10'
 
-if (-not (Test-Path -LiteralPath $solution)) {
-    throw "SYSVAD solution not found at $solution"
+foreach ($project in $projects) {
+    if (-not (Test-Path -LiteralPath $project)) {
+        throw "Virtual microphone driver project not found at $project"
+    }
 }
 
 $wdmHeaders = Get-ChildItem -LiteralPath (Join-Path $windowsKits 'Include') `
@@ -35,12 +40,48 @@ if ([string]::IsNullOrWhiteSpace($installation)) {
     throw 'A Visual Studio installation containing MSBuild was not found.'
 }
 
-$msbuild = Join-Path $installation 'MSBuild\Current\Bin\MSBuild.exe'
+$msbuild = Join-Path $installation 'MSBuild\Current\Bin\amd64\MSBuild.exe'
 if (-not (Test-Path -LiteralPath $msbuild)) {
     throw "MSBuild was not found at $msbuild"
 }
 
-& $msbuild $solution /m /t:Build "/p:Configuration=$Configuration" "/p:Platform=$Platform"
-if ($LASTEXITCODE -ne 0) {
-    throw "Driver build failed with exit code $LASTEXITCODE"
+$buildTemp = Join-Path (Split-Path $PSScriptRoot -Parent | Split-Path -Parent) 'build\driver-temp'
+New-Item -ItemType Directory -Path $buildTemp -Force | Out-Null
+
+# Some terminals expose both PATH and Path. MSBuild runs on .NET Framework,
+# whose process launcher treats those case-insensitive names as duplicates.
+# Build an explicit, case-insensitive environment and keep temp files writable.
+$cleanEnvironment = [Collections.Generic.Dictionary[string, string]]::new(
+    [StringComparer]::OrdinalIgnoreCase)
+foreach ($entry in [Environment]::GetEnvironmentVariables().GetEnumerator()) {
+    $cleanEnvironment[$entry.Key] = $entry.Value
+}
+$cleanEnvironment['TEMP'] = $buildTemp
+$cleanEnvironment['TMP'] = $buildTemp
+
+foreach ($project in $projects) {
+    $msbuildArguments = @(
+        $project,
+        '/m',
+        '/t:Build',
+        "/p:Configuration=$Configuration",
+        "/p:Platform=$Platform",
+        '/p:SignMode=Off'
+    )
+    $startInfo = [Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $msbuild
+    $startInfo.UseShellExecute = $false
+    foreach ($argument in $msbuildArguments) {
+        $startInfo.ArgumentList.Add($argument)
+    }
+    $startInfo.Environment.Clear()
+    foreach ($entry in $cleanEnvironment.GetEnumerator()) {
+        $startInfo.Environment[$entry.Key] = $entry.Value
+    }
+
+    $build = [Diagnostics.Process]::Start($startInfo)
+    $build.WaitForExit()
+    if ($build.ExitCode -ne 0) {
+        throw "Driver build failed for $project with exit code $($build.ExitCode)"
+    }
 }

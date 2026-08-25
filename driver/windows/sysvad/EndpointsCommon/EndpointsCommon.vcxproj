@@ -194,6 +194,7 @@
     <ClCompile Include="usbhsmictopo.cpp" />
     <ClCompile Include="usbhsspeakertopo.cpp" />
     <ClCompile Include="usbhstopo.cpp" />
+    <ClCompile Include="..\..\vocalchain\VirtualMicTransport.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Inf Exclude="@(Inf)" Include="*.inf" />

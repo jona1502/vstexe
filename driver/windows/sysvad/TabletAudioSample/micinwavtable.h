@@ -15,6 +15,8 @@ Abstract:
 #ifndef _SYSVAD_MICINWAVTABLE_H_
 #define _SYSVAD_MICINWAVTABLE_H_
 
+#include "../../vocalchain/VirtualMicTransport.h"
+
 //
 // Mic in (external: headphone) range.
 //
@@ -407,6 +409,24 @@ PCCONNECTION_DESCRIPTOR MicInWaveMiniportConnections[] =
 static
 PCPROPERTY_ITEM PropertiesMicInWaveFilter[] =
 {
+    {
+        &KSPROPSETID_VocalChainVirtualMic,
+        static_cast<ULONG>(vocalchain::virtualmic::PropertyId::protocolInfo),
+        KSPROPERTY_TYPE_GET | KSPROPERTY_TYPE_BASICSUPPORT,
+        PropertyHandler_VocalChainVirtualMic
+    },
+    {
+        &KSPROPSETID_VocalChainVirtualMic,
+        static_cast<ULONG>(vocalchain::virtualmic::PropertyId::audioPacket),
+        KSPROPERTY_TYPE_SET | KSPROPERTY_TYPE_BASICSUPPORT,
+        PropertyHandler_VocalChainVirtualMic
+    },
+    {
+        &KSPROPSETID_VocalChainVirtualMic,
+        static_cast<ULONG>(vocalchain::virtualmic::PropertyId::transportStatus),
+        KSPROPERTY_TYPE_GET | KSPROPERTY_TYPE_BASICSUPPORT,
+        PropertyHandler_VocalChainVirtualMic
+    },
     {
         &KSPROPSETID_General,
         KSPROPERTY_GENERAL_COMPONENTID,

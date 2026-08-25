@@ -15,7 +15,8 @@ void expect(bool condition, const char* message)
 int main()
 {
     std::array<std::int16_t, 5> storage{};
-    vocalchain::driver::PcmRingBuffer ring(storage.data(), storage.size());
+    vocalchain::driver::PcmRingBuffer ring;
+    ring.initialize(storage.data(), storage.size());
 
     const std::array<std::int16_t, 3> first{1, 2, 3};
     ring.write(first.data(), first.size());

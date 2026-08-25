@@ -23,6 +23,7 @@ Abstract:
 #include <sysvad.h>
 #include <ContosoKeywordDetector.h>
 #include "IHVPrivatePropertySet.h"
+#include "../vocalchain/VirtualMicTransport.h"
 
 #include "simple.h"
 #include "minipairs.h"
@@ -326,6 +327,8 @@ Environment:
 
     DPF(D_TERSE, ("[DriverUnload]"));
 
+    VocalChainVirtualMicShutdown();
+
     ReleaseRegistryStringBuffer();
 
     if (DriverObject == NULL)
@@ -565,6 +568,12 @@ Return Value:
     IF_FAILED_ACTION_JUMP(
         ntStatus,
         DPF(D_ERROR, ("Registry Configuration error 0x%x", ntStatus)),
+        Done);
+
+    ntStatus = VocalChainVirtualMicInitialize();
+    IF_FAILED_ACTION_JUMP(
+        ntStatus,
+        DPF(D_ERROR, ("Virtual microphone transport initialization failed, 0x%x", ntStatus)),
         Done);
 
     //
@@ -857,7 +866,7 @@ InstallAllRenderFilters(
     
     PAGED_CODE();
 
-    for(ULONG i = 0; i < g_cRenderEndpoints; ++i, ++ppAeMiniports)
+    for(ULONG i = 0; i != g_cRenderEndpoints; ++i, ++ppAeMiniports)
     {
         ntStatus = InstallEndpointRenderFilters(_pDeviceObject, _pIrp, _pAdapterCommon, *ppAeMiniports);
         IF_FAILED_JUMP(ntStatus, Exit);

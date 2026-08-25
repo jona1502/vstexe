@@ -6,6 +6,7 @@
 #include "minwavertstream.h"
 #include "UnittestData.h"
 #include "AudioModuleHelper.h"
+#include "../../vocalchain/VirtualMicTransport.h"
 #define MINWAVERTSTREAM_POOLTAG 'SRWM'
 
 #pragma warning (disable : 4127)
@@ -1502,7 +1503,7 @@ VOID CMiniportWaveRTStream::WriteBytes
 
 Routine Description:
 
-This function writes the audio buffer using a sine wave generator
+This function writes processed VocalChain PCM into the capture buffer.
 Arguments:
 
 ByteDisplacement - # of bytes to process.
@@ -1516,7 +1517,12 @@ ByteDisplacement - # of bytes to process.
     while (ByteDisplacement > 0)
     {
         ULONG runWrite = min(ByteDisplacement, m_ulDmaBufferSize - bufferOffset);
-            m_ToneGenerator.GenerateSine(m_pDmaBuffer + bufferOffset, runWrite);
+        ULONG frameCount = runWrite / sizeof(SHORT);
+        VocalChainVirtualMicRead(
+            reinterpret_cast<SHORT*>(m_pDmaBuffer + bufferOffset),
+            frameCount);
+        if ((runWrite % sizeof(SHORT)) != 0)
+            m_pDmaBuffer[bufferOffset + runWrite - 1] = 0;
         bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
         ByteDisplacement -= runWrite;
     }

@@ -1,22 +1,34 @@
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
-
 namespace vocalchain::driver {
+
+using ring_size_type = decltype(sizeof(0));
 
 // The kernel driver protects each operation with a spin lock. Keeping the
 // storage external lets the driver allocate it once from nonpaged pool.
 class PcmRingBuffer final {
 public:
-    PcmRingBuffer(std::int16_t* storage, std::size_t capacityFrames) noexcept
+    constexpr PcmRingBuffer() noexcept = default;
+
+    PcmRingBuffer(short* storage, ring_size_type capacityFrames) noexcept
         : samples(storage), capacity(capacityFrames)
     {
     }
 
-    std::size_t availableFrames() const noexcept { return size; }
-    std::uint64_t droppedFrameCount() const noexcept { return droppedFrames; }
-    std::uint64_t silentFrameCount() const noexcept { return silentFrames; }
+    void initialize(short* storage, ring_size_type capacityFrames) noexcept
+    {
+        samples = storage;
+        capacity = capacityFrames;
+        readIndex = 0;
+        writeIndex = 0;
+        size = 0;
+        droppedFrames = 0;
+        silentFrames = 0;
+    }
+
+    ring_size_type availableFrames() const noexcept { return size; }
+    unsigned long long droppedFrameCount() const noexcept { return droppedFrames; }
+    unsigned long long silentFrameCount() const noexcept { return silentFrames; }
 
     void clear() noexcept
     {
@@ -25,7 +37,7 @@ public:
         size = 0;
     }
 
-    void write(const std::int16_t* input, std::size_t frameCount) noexcept
+    void write(const short* input, ring_size_type frameCount) noexcept
     {
         if (samples == nullptr || input == nullptr || capacity == 0 || frameCount == 0)
             return;
@@ -44,38 +56,38 @@ public:
             droppedFrames += discard;
         }
 
-        for (std::size_t i = 0; i < frameCount; ++i) {
+        for (ring_size_type i = 0; i < frameCount; ++i) {
             samples[writeIndex] = input[i];
             writeIndex = (writeIndex + 1) % capacity;
         }
         size += frameCount;
     }
 
-    void read(std::int16_t* output, std::size_t frameCount) noexcept
+    void read(short* output, ring_size_type frameCount) noexcept
     {
         if (output == nullptr || frameCount == 0)
             return;
 
         const auto readable = frameCount < size ? frameCount : size;
-        for (std::size_t i = 0; i < readable; ++i) {
+        for (ring_size_type i = 0; i < readable; ++i) {
             output[i] = samples[readIndex];
             readIndex = (readIndex + 1) % capacity;
         }
         size -= readable;
 
-        for (std::size_t i = readable; i < frameCount; ++i)
+        for (ring_size_type i = readable; i < frameCount; ++i)
             output[i] = 0;
         silentFrames += frameCount - readable;
     }
 
 private:
-    std::int16_t* samples{};
-    std::size_t capacity{};
-    std::size_t readIndex{};
-    std::size_t writeIndex{};
-    std::size_t size{};
-    std::uint64_t droppedFrames{};
-    std::uint64_t silentFrames{};
+    short* samples{};
+    ring_size_type capacity{};
+    ring_size_type readIndex{};
+    ring_size_type writeIndex{};
+    ring_size_type size{};
+    unsigned long long droppedFrames{};
+    unsigned long long silentFrames{};
 };
 
 } // namespace vocalchain::driver

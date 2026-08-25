@@ -1,51 +1,79 @@
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
-#include <type_traits>
-
 namespace vocalchain::virtualmic {
 
-inline constexpr std::uint32_t protocolMagic = 0x56434D49; // "VCMI"
-inline constexpr std::uint16_t protocolVersionMajor = 1;
-inline constexpr std::uint16_t protocolVersionMinor = 0;
-inline constexpr std::uint32_t sampleRate = 48000;
-inline constexpr std::uint16_t channelCount = 1;
-inline constexpr std::uint16_t bitsPerSample = 16;
-inline constexpr std::uint32_t maximumFramesPerPacket = 960;
-inline constexpr std::size_t ringCapacityFrames = sampleRate * 2;
+using u8 = unsigned char;
+using u16 = unsigned short;
+using u32 = unsigned int;
+using u64 = unsigned long long;
+using size_type = decltype(sizeof(0));
 
-enum class SampleFormat : std::uint16_t {
+static_assert(sizeof(u8) == 1 && sizeof(u16) == 2 && sizeof(u32) == 4 && sizeof(u64) == 8);
+
+inline constexpr u32 protocolMagic = 0x56434D49; // "VCMI"
+inline constexpr u16 protocolVersionMajor = 1;
+inline constexpr u16 protocolVersionMinor = 0;
+inline constexpr u32 sampleRate = 48000;
+inline constexpr u16 channelCount = 1;
+inline constexpr u16 bitsPerSample = 16;
+inline constexpr u32 maximumFramesPerPacket = 960;
+inline constexpr size_type ringCapacityFrames = sampleRate * 2;
+
+// {6CB95973-265F-4D3B-94D1-7121E579442D}
+inline constexpr u32 propertySetGuidData1 = 0x6cb95973;
+inline constexpr u16 propertySetGuidData2 = 0x265f;
+inline constexpr u16 propertySetGuidData3 = 0x4d3b;
+inline constexpr u8 propertySetGuidData4[8] = {
+    0x94, 0xd1, 0x71, 0x21, 0xe5, 0x79, 0x44, 0x2d
+};
+
+enum class PropertyId : u32 {
+    protocolInfo = 1,
+    audioPacket = 2,
+    transportStatus = 3
+};
+
+enum class SampleFormat : u16 {
     signedPcm16LittleEndian = 1
 };
 
 #pragma pack(push, 1)
 struct ProtocolInfo {
-    std::uint32_t magic{protocolMagic};
-    std::uint16_t versionMajor{protocolVersionMajor};
-    std::uint16_t versionMinor{protocolVersionMinor};
-    std::uint32_t structureSize{sizeof(ProtocolInfo)};
-    std::uint32_t sampleRateHz{sampleRate};
-    std::uint16_t channels{channelCount};
-    std::uint16_t bitsPerSample{vocalchain::virtualmic::bitsPerSample};
+    u32 magic{protocolMagic};
+    u16 versionMajor{protocolVersionMajor};
+    u16 versionMinor{protocolVersionMinor};
+    u32 structureSize{sizeof(ProtocolInfo)};
+    u32 sampleRateHz{sampleRate};
+    u16 channels{channelCount};
+    u16 bitsPerSample{vocalchain::virtualmic::bitsPerSample};
     SampleFormat sampleFormat{SampleFormat::signedPcm16LittleEndian};
-    std::uint16_t reserved{};
-    std::uint32_t maximumPacketFrames{maximumFramesPerPacket};
+    u16 reserved{};
+    u32 maximumPacketFrames{maximumFramesPerPacket};
 };
 
 struct AudioPacketHeader {
-    std::uint32_t magic{protocolMagic};
-    std::uint16_t versionMajor{protocolVersionMajor};
-    std::uint16_t headerSize{sizeof(AudioPacketHeader)};
-    std::uint64_t sequence{};
-    std::uint32_t frameCount{};
-    std::uint32_t payloadBytes{};
+    u32 magic{protocolMagic};
+    u16 versionMajor{protocolVersionMajor};
+    u16 headerSize{sizeof(AudioPacketHeader)};
+    u64 sequence{};
+    u32 frameCount{};
+    u32 payloadBytes{};
+};
+
+struct TransportStatus {
+    u32 structureSize{sizeof(TransportStatus)};
+    u32 bufferedFrames{};
+    u64 acceptedPackets{};
+    u64 rejectedPackets{};
+    u64 droppedFrames{};
+    u64 silentFrames{};
+    u64 lastSequence{};
 };
 #pragma pack(pop)
 
-inline constexpr std::size_t bytesPerFrame = channelCount * (bitsPerSample / 8u);
-inline constexpr std::size_t maximumPayloadBytes = maximumFramesPerPacket * bytesPerFrame;
-inline constexpr std::size_t maximumPacketBytes = sizeof(AudioPacketHeader) + maximumPayloadBytes;
+inline constexpr size_type bytesPerFrame = channelCount * (bitsPerSample / 8u);
+inline constexpr size_type maximumPayloadBytes = maximumFramesPerPacket * bytesPerFrame;
+inline constexpr size_type maximumPacketBytes = sizeof(AudioPacketHeader) + maximumPayloadBytes;
 
 constexpr bool isCompatible(const ProtocolInfo& info) noexcept
 {
@@ -67,9 +95,8 @@ constexpr bool isValid(const AudioPacketHeader& header) noexcept
         && header.payloadBytes == header.frameCount * bytesPerFrame;
 }
 
-static_assert(std::is_trivially_copyable_v<ProtocolInfo>);
-static_assert(std::is_trivially_copyable_v<AudioPacketHeader>);
 static_assert(sizeof(ProtocolInfo) == 28);
 static_assert(sizeof(AudioPacketHeader) == 24);
+static_assert(sizeof(TransportStatus) == 48);
 
 } // namespace vocalchain::virtualmic
