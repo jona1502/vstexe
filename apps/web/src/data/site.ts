@@ -21,15 +21,6 @@ export const nav = [
   { label: 'Open source', href: site.repo, external: true },
 ] as const;
 
-/** Concepts that float around the hero headline. */
-export const heroOrbit = [
-  { icon: 'microphone', label: 'Physical microphone', position: 'left-[4%] top-[14%]', delay: '0s' },
-  { icon: 'vst3', label: 'VST3 plug-ins', position: 'left-[13%] bottom-[16%]', delay: '-2.4s' },
-  { icon: 'waveform', label: '48 kHz mono path', position: 'right-[5%] top-[20%]', delay: '-1.2s' },
-  { icon: 'preset', label: 'Chain presets', position: 'right-[14%] bottom-[13%]', delay: '-3.6s' },
-  { icon: 'virtual-mic', label: 'Virtual microphone', position: 'left-1/2 -top-2 -translate-x-1/2', delay: '-4.8s' },
-] as const;
-
 /**
  * Verifiable capability statements. There are no users to quote yet, so the
  * marquee carries facts instead of invented testimonials.
