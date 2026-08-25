@@ -12,6 +12,17 @@ constexpr juce::uint32 accent = 0xff7c5cff;
 constexpr juce::uint32 accentBright = 0xff9b87ff;
 constexpr juce::uint32 success = 0xff3ddc97;
 
+juce::File pluginDataDirectory()
+{
+    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+        .getChildFile("VocalChain");
+}
+
+juce::File pluginCacheFile()
+{
+    return pluginDataDirectory().getChildFile("known-plugins.xml");
+}
+
 void drawCard(juce::Graphics& g, juce::Rectangle<float> bounds)
 {
     g.setColour(juce::Colour(0x24000000));
@@ -115,7 +126,8 @@ void VocalChainLookAndFeel::positionComboBoxText(juce::ComboBox& box, juce::Labe
 }
 
 MainComponent::MainComponent()
-    : devices(engine.deviceManager(), 1, 1, 2, 2, false, false, true, false)
+    : juce::Thread("VST3 plug-in scanner"),
+      devices(engine.deviceManager(), 1, 1, 2, 2, false, false, true, false)
 {
     setLookAndFeel(&lookAndFeel);
     for (auto* component : std::initializer_list<juce::Component*>{
@@ -140,6 +152,12 @@ MainComponent::MainComponent()
                    juce::dontSendNotification);
     status.setColour(juce::Label::textColourId, juce::Colour(textMuted));
     status.setFont(juce::FontOptions(13.0f));
+    loadPluginCache();
+    refreshAvailablePlugins();
+    if (engine.knownPlugins().getNumTypes() > 0)
+        status.setText(juce::String(engine.knownPlugins().getNumTypes())
+                           + " saved VST3 plug-ins loaded.",
+                       juce::dontSendNotification);
     const auto error = engine.initialiseAudio();
     if (error.isNotEmpty()) status.setText("Audio: " + error, juce::dontSendNotification);
     startTimerHz(60);
@@ -148,6 +166,8 @@ MainComponent::MainComponent()
 
 MainComponent::~MainComponent()
 {
+    signalThreadShouldExit();
+    stopThread(10000);
     stopTimer();
     setLookAndFeel(nullptr);
     editorWindow.reset();
@@ -264,6 +284,26 @@ void MainComponent::timerCallback()
         animationPhase -= juce::MathConstants<float>::twoPi;
     if (const auto selectedRow = chainList.getSelectedRow(); selectedRow >= 0)
         chainList.repaintRow(selectedRow);
+
+    if (isThreadRunning()) {
+        juce::String current;
+        {
+            const juce::ScopedLock lock(scanStatusLock);
+            current = pluginBeingScanned;
+        }
+        const auto percent = juce::roundToInt(scanProgress.load() * 100.0f);
+        status.setText("Scanning VST3: " + juce::String(percent) + "%  " + current,
+                       juce::dontSendNotification);
+    }
+
+    if (scanFinished.exchange(false)) {
+        refreshAvailablePlugins();
+        scan.setEnabled(true);
+        add.setEnabled(true);
+        status.setText(juce::String(engine.knownPlugins().getNumTypes())
+                           + " VST3 plug-ins found and saved.",
+                       juce::dontSendNotification);
+    }
 }
 
 void MainComponent::buttonClicked(juce::Button* button)
@@ -285,22 +325,60 @@ void MainComponent::buttonClicked(juce::Button* button)
 
 void MainComponent::scanPlugins()
 {
-    status.setText("Scanning VST3 plug-ins...", juce::dontSendNotification);
+    if (isThreadRunning()) return;
+    scan.setEnabled(false);
+    add.setEnabled(false);
+    scanProgress.store(0.0f);
+    scanFinished.store(false);
+    status.setText("Preparing VST3 scan...", juce::dontSendNotification);
+    startThread();
+}
+
+void MainComponent::run()
+{
     for (int i = 0; i < engine.formatManager().getNumFormats(); ++i) {
+        if (threadShouldExit()) return;
         auto* format = engine.formatManager().getFormat(i);
         if (format->getName() != "VST3") continue;
         juce::PluginDirectoryScanner scanner(engine.knownPlugins(), *format,
             format->getDefaultLocationsToSearch(), true,
-            juce::File::getSpecialLocation(juce::File::tempDirectory)
+            pluginDataDirectory()
                 .getChildFile("vocalchain-scan-dead-mans-pedal.txt"));
         juce::String current;
-        while (scanner.scanNextFile(true, current)) {}
+        while (!threadShouldExit()) {
+            {
+                const juce::ScopedLock lock(scanStatusLock);
+                pluginBeingScanned = scanner.getNextPluginFileThatWillBeScanned();
+            }
+            scanProgress.store(scanner.getProgress());
+            if (!scanner.scanNextFile(true, current)) break;
+        }
     }
+    if (threadShouldExit()) return;
+    scanProgress.store(1.0f);
+    savePluginCache();
+    scanFinished.store(true);
+}
+
+void MainComponent::refreshAvailablePlugins()
+{
     availablePlugins.clear();
     const auto types = engine.knownPlugins().getTypes();
     for (int i = 0; i < types.size(); ++i) availablePlugins.addItem(types.getReference(i).name, i + 1);
     if (!types.isEmpty()) availablePlugins.setSelectedId(1);
-    status.setText(juce::String(types.size()) + " VST3 plug-ins found.", juce::dontSendNotification);
+}
+
+void MainComponent::loadPluginCache()
+{
+    if (auto xml = juce::XmlDocument::parse(pluginCacheFile()))
+        engine.knownPlugins().recreateFromXml(*xml);
+}
+
+void MainComponent::savePluginCache()
+{
+    pluginDataDirectory().createDirectory();
+    if (auto xml = engine.knownPlugins().createXml())
+        xml->writeTo(pluginCacheFile());
 }
 
 void MainComponent::addSelectedPlugin()

@@ -1,6 +1,7 @@
 #pragma once
 #include <vocalchain/PluginChainEngine.h>
 #include <juce_audio_utils/juce_audio_utils.h>
+#include <atomic>
 
 class VocalChainLookAndFeel final : public juce::LookAndFeel_V4 {
 public:
@@ -19,7 +20,8 @@ public:
 class MainComponent final : public juce::Component,
                             private juce::ListBoxModel,
                             private juce::Button::Listener,
-                            private juce::Timer {
+                            private juce::Timer,
+                            private juce::Thread {
 public:
     MainComponent();
     ~MainComponent() override;
@@ -37,7 +39,11 @@ private:
     void loadPreset();
     void showError(const juce::String& title, const juce::String& message);
     void refresh();
+    void refreshAvailablePlugins();
+    void loadPluginCache();
+    void savePluginCache();
     void timerCallback() override;
+    void run() override;
 
     vocalchain::PluginChainEngine engine;
     VocalChainLookAndFeel lookAndFeel;
@@ -49,6 +55,10 @@ private:
     juce::TextButton save{"Save preset"}, load{"Load preset"};
     juce::Label status;
     float animationPhase{};
+    std::atomic<float> scanProgress{};
+    std::atomic<bool> scanFinished{};
+    juce::CriticalSection scanStatusLock;
+    juce::String pluginBeingScanned;
     std::unique_ptr<juce::FileChooser> chooser;
     std::unique_ptr<juce::DocumentWindow> editorWindow;
 };
