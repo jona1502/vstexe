@@ -172,13 +172,13 @@ MainComponent::MainComponent()
 {
     setLookAndFeel(&lookAndFeel);
     for (auto* component : std::initializer_list<juce::Component*>{
-             &devices, &availablePlugins, &chainList, &scan, &add, &remove,
+             &devices, &availablePlugins, &chainList, &scan, &remove,
              &up, &down, &bypass, &open, &monitor, &save, &load, &checkUpdates,
              &installUpdate})
         addAndMakeVisible(component);
 
     for (auto* button : std::initializer_list<juce::Button*>{
-             &scan, &add, &remove, &up, &down, &bypass, &open, &monitor, &save, &load,
+             &scan, &remove, &up, &down, &bypass, &open, &monitor, &save, &load,
              &checkUpdates, &installUpdate})
         button->addListener(this);
 
@@ -187,7 +187,6 @@ MainComponent::MainComponent()
     installUpdate.setComponentID("primary");
     // Only shown once a newer release is actually available.
     installUpdate.setVisible(false);
-    add.setComponentID("primary");
     remove.setComponentID("danger");
     open.setComponentID("primary");
     monitor.setClickingTogglesState(true);
@@ -195,7 +194,9 @@ MainComponent::MainComponent()
     chainList.setRowHeight(56);
     chainList.setOutlineThickness(0);
     chainList.getViewport()->setScrollBarsShown(true, false);
-    availablePlugins.setTextWhenNothingSelected("Choose a VST3 effect");
+    availablePlugins.setTextWhenNothingSelected("Add a VST3 effect");
+    // Picking an effect is the whole gesture; there is nothing left to confirm.
+    availablePlugins.onChange = [this] { addSelectedPlugin(); };
 
     status.setText("Select a microphone, scan VST3 plug-ins, then build your Vocal Chain.",
                    juce::dontSendNotification);
@@ -289,9 +290,7 @@ void MainComponent::resized()
     // Right panel: plug-in picker on the caption row, actions along the bottom.
     auto chainInner = chainPanel.reduced(16, 15);
     auto headerRow = chainInner.removeFromTop(34);
-    add.setBounds(headerRow.removeFromRight(66).reduced(0, 2));
-    headerRow.removeFromRight(8);
-    availablePlugins.setBounds(headerRow.removeFromRight(juce::jmin(240, headerRow.getWidth() - 120))
+    availablePlugins.setBounds(headerRow.removeFromRight(juce::jmin(314, headerRow.getWidth() - 120))
                                    .reduced(0, 2));
     chainInner.removeFromTop(12);
 
@@ -362,7 +361,7 @@ void MainComponent::timerCallback()
     if (scanFinished.exchange(false)) {
         refreshAvailablePlugins();
         scan.setEnabled(true);
-        add.setEnabled(true);
+        availablePlugins.setEnabled(true);
         status.setText(juce::String(engine.knownPlugins().getNumTypes())
                            + " VST3 plug-ins found and saved.",
                        juce::dontSendNotification);
@@ -373,7 +372,6 @@ void MainComponent::buttonClicked(juce::Button* button)
 {
     const int row = chainList.getSelectedRow();
     if (button == &scan) scanPlugins();
-    else if (button == &add) addSelectedPlugin();
     else if (button == &remove && row >= 0) {
         editorWindow.reset();
         editorPlugin = nullptr;
@@ -405,7 +403,7 @@ void MainComponent::scanPlugins()
 {
     if (isThreadRunning()) return;
     scan.setEnabled(false);
-    add.setEnabled(false);
+    availablePlugins.setEnabled(false);
     scanProgress.store(0.0f);
     scanFinished.store(false);
     status.setText("Preparing VST3 scan...", juce::dontSendNotification);
@@ -440,10 +438,10 @@ void MainComponent::run()
 
 void MainComponent::refreshAvailablePlugins()
 {
-    availablePlugins.clear();
+    // clear() notifies by default, which would re-enter the add handler.
+    availablePlugins.clear(juce::dontSendNotification);
     const auto types = engine.knownPlugins().getTypes();
     for (int i = 0; i < types.size(); ++i) availablePlugins.addItem(types.getReference(i).name, i + 1);
-    if (!types.isEmpty()) availablePlugins.setSelectedId(1);
 }
 
 void MainComponent::loadPluginCache()
@@ -466,6 +464,9 @@ void MainComponent::addSelectedPlugin()
     if (!juce::isPositiveAndBelow(index, types.size())) return;
     juce::String error;
     if (!engine.addPlugin(types.getReference(index), error)) showError("Could not load plug-in", error);
+    // Back to the resting caption, otherwise picking the same effect a second
+    // time is not a change and would never be reported.
+    availablePlugins.setSelectedId(0, juce::dontSendNotification);
     refresh();
 }
 
