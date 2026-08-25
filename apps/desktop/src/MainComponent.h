@@ -1,6 +1,7 @@
 #pragma once
 #include <vocalchain/PluginChainEngine.h>
 #include <juce_audio_utils/juce_audio_utils.h>
+#include <array>
 #include <atomic>
 
 class VocalChainLookAndFeel final : public juce::LookAndFeel_V4 {
@@ -44,6 +45,7 @@ private:
     void savePluginCache();
     void timerCallback() override;
     void run() override;
+    void paintInputMeter(juce::Graphics&);
 
     vocalchain::PluginChainEngine engine;
     VocalChainLookAndFeel lookAndFeel;
@@ -55,7 +57,15 @@ private:
     juce::TextButton monitor{"Monitor off"};
     juce::TextButton save{"Save preset"}, load{"Load preset"};
     juce::Label status;
-    float animationPhase{};
+
+    // Layout rectangles shared between resized() and paint().
+    juce::Rectangle<int> inputPanel, chainPanel, meterArea, statusStrip;
+
+    // Holding the level meter keeps input measurement enabled in the device manager.
+    juce::AudioDeviceManager::LevelMeter::Ptr inputLevel;
+    std::array<float, 24> meterHistory{};
+    int meterTick{};
+    int meterWriteIndex{};
     std::atomic<float> scanProgress{};
     std::atomic<bool> scanFinished{};
     juce::CriticalSection scanStatusLock;

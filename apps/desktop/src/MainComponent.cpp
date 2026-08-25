@@ -2,15 +2,24 @@
 #include <cmath>
 
 namespace {
-constexpr juce::uint32 background = 0xff090b10;
-constexpr juce::uint32 surface = 0xff11151e;
-constexpr juce::uint32 surfaceRaised = 0xff181d29;
-constexpr juce::uint32 border = 0xff272d3b;
-constexpr juce::uint32 text = 0xfff5f7fb;
-constexpr juce::uint32 textMuted = 0xff8e98aa;
-constexpr juce::uint32 accent = 0xff7c5cff;
-constexpr juce::uint32 accentBright = 0xff9b87ff;
-constexpr juce::uint32 success = 0xff3ddc97;
+// Mirrors the design tokens in apps/web/src/styles/global.css so the app and
+// the product site read as one product.
+constexpr juce::uint32 background = 0xff08090c;   // ink-950
+constexpr juce::uint32 surface = 0xff101319;      // ink-850
+constexpr juce::uint32 surfaceRaised = 0xff141821; // ink-800
+constexpr juce::uint32 border = 0xff1c212c;       // ink-700
+constexpr juce::uint32 text = 0xfff2f5f8;         // mist-100
+constexpr juce::uint32 textMuted = 0xff8b96a6;    // mist-500
+constexpr juce::uint32 textFaint = 0xff6b7686;    // mist-600
+constexpr juce::uint32 accent = 0xff38dfe0;       // signal-400
+constexpr juce::uint32 accentBright = 0xff7df2ee; // signal-300
+constexpr juce::uint32 accentDeep = 0xff17c3c9;   // signal-500
+
+// Accent surfaces carry dark text, exactly as the buttons do on the site.
+constexpr juce::uint32 onAccent = 0xff08090c;
+
+constexpr float panelRadius = 14.0f;
+constexpr float controlRadius = 8.0f;
 
 juce::File pluginDataDirectory()
 {
@@ -25,12 +34,30 @@ juce::File pluginCacheFile()
 
 void drawCard(juce::Graphics& g, juce::Rectangle<float> bounds)
 {
-    g.setColour(juce::Colour(0x24000000));
-    g.fillRoundedRectangle(bounds.translated(0.0f, 4.0f), 16.0f);
     g.setColour(juce::Colour(surface));
-    g.fillRoundedRectangle(bounds, 16.0f);
+    g.fillRoundedRectangle(bounds, panelRadius);
     g.setColour(juce::Colour(border));
-    g.drawRoundedRectangle(bounds, 16.0f, 1.0f);
+    g.drawRoundedRectangle(bounds.reduced(0.5f), panelRadius, 1.0f);
+}
+
+/** Small uppercase caption with the wide tracking used for section labels. */
+void drawCaption(juce::Graphics& g, const juce::String& caption, juce::Rectangle<int> area,
+                 juce::Colour colour, float size = 10.5f)
+{
+    g.setColour(colour);
+    g.setFont(juce::Font(juce::FontOptions(size, juce::Font::bold)).withExtraKerningFactor(0.22f));
+    g.drawText(caption, area, juce::Justification::centredLeft);
+}
+
+/** Pill used for the ACTIVE and BYPASS row states. */
+void drawStatePill(juce::Graphics& g, const juce::String& label, juce::Rectangle<float> bounds,
+                   juce::Colour colour, float backgroundAlpha)
+{
+    g.setColour(colour.withAlpha(backgroundAlpha));
+    g.fillRoundedRectangle(bounds, bounds.getHeight() * 0.5f);
+    g.setColour(colour);
+    g.setFont(juce::Font(juce::FontOptions(9.0f, juce::Font::bold)).withExtraKerningFactor(0.16f));
+    g.drawText(label, bounds.toNearestInt(), juce::Justification::centred);
 }
 
 class PluginEditorWindow final : public juce::DocumentWindow {
@@ -57,10 +84,10 @@ VocalChainLookAndFeel::VocalChainLookAndFeel()
     setColour(juce::PopupMenu::backgroundColourId, juce::Colour(surfaceRaised));
     setColour(juce::PopupMenu::textColourId, juce::Colour(text));
     setColour(juce::PopupMenu::highlightedBackgroundColourId, juce::Colour(accent));
-    setColour(juce::PopupMenu::highlightedTextColourId, juce::Colours::white);
+    setColour(juce::PopupMenu::highlightedTextColourId, juce::Colour(onAccent));
     setColour(juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
     setColour(juce::ListBox::outlineColourId, juce::Colours::transparentBlack);
-    setColour(juce::ScrollBar::thumbColourId, juce::Colour(0xff424a5c));
+    setColour(juce::ScrollBar::thumbColourId, juce::Colour(0xff2a313f));
     setColour(juce::TextEditor::backgroundColourId, juce::Colour(surfaceRaised));
     setColour(juce::TextEditor::textColourId, juce::Colour(text));
     setColour(juce::TextEditor::outlineColourId, juce::Colour(border));
@@ -72,30 +99,41 @@ void VocalChainLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button
 {
     const auto isPrimary = button.getComponentID() == "primary";
     const auto isDanger = button.getComponentID() == "danger";
-    auto colour = isPrimary ? juce::Colour(accent) : juce::Colour(surfaceRaised);
-    if (isDanger && highlighted) colour = juce::Colour(0xffa63e55);
-    else if (down) colour = colour.brighter(0.16f);
-    else if (highlighted) colour = colour.brighter(0.08f);
+    const auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
 
-    auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
-    if (highlighted && isPrimary) {
-        g.setColour(juce::Colour(accent).withAlpha(0.22f));
-        g.fillRoundedRectangle(bounds.expanded(2.0f), 10.0f);
+    auto colour = isPrimary ? juce::Colour(accent) : juce::Colour(surfaceRaised);
+    if (isPrimary) {
+        if (down) colour = juce::Colour(accentDeep);
+        else if (highlighted) colour = juce::Colour(accentBright);
     }
+    else if (isDanger && highlighted) colour = juce::Colour(0xff3a2029);
+    else if (down) colour = colour.brighter(0.14f);
+    else if (highlighted) colour = colour.brighter(0.07f);
+
+    if (isPrimary && highlighted) {
+        g.setColour(juce::Colour(accent).withAlpha(0.20f));
+        g.fillRoundedRectangle(bounds.expanded(2.5f), controlRadius + 2.0f);
+    }
+
     g.setColour(colour.withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.45f));
-    g.fillRoundedRectangle(bounds, 8.0f);
+    g.fillRoundedRectangle(bounds, controlRadius);
+
     if (!isPrimary) {
-        g.setColour(juce::Colour(border).brighter(highlighted ? 0.18f : 0.0f));
-        g.drawRoundedRectangle(bounds, 8.0f, 1.0f);
+        auto outline = juce::Colour(border);
+        if (isDanger && highlighted) outline = juce::Colour(0xff7d3a4a);
+        else if (highlighted) outline = outline.brighter(0.22f);
+        g.setColour(outline.withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f));
+        g.drawRoundedRectangle(bounds, controlRadius, 1.0f);
     }
 }
 
 void VocalChainLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& button,
                                             bool, bool)
 {
-    g.setColour(button.findColour(juce::TextButton::textColourOffId)
-                       .withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f));
-    g.setFont(juce::FontOptions(14.0f, juce::Font::bold));
+    const auto isPrimary = button.getComponentID() == "primary";
+    const auto colour = isPrimary ? juce::Colour(onAccent) : juce::Colour(text);
+    g.setColour(colour.withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f));
+    g.setFont(juce::FontOptions(13.0f, isPrimary ? juce::Font::bold : juce::Font::plain));
     g.drawFittedText(button.getButtonText(), button.getLocalBounds().reduced(10, 0),
                      juce::Justification::centred, 1);
 }
@@ -106,10 +144,10 @@ void VocalChainLookAndFeel::drawComboBox(juce::Graphics& g, int width, int heigh
     const auto bounds = juce::Rectangle<float>(0.5f, 0.5f, static_cast<float>(width - 1),
                                                 static_cast<float>(height - 1));
     g.setColour(box.findColour(juce::ComboBox::backgroundColourId));
-    g.fillRoundedRectangle(bounds, 9.0f);
+    g.fillRoundedRectangle(bounds, controlRadius);
     g.setColour(box.findColour(juce::ComboBox::outlineColourId)
                    .brighter(box.isMouseOverOrDragging() ? 0.2f : 0.0f));
-    g.drawRoundedRectangle(bounds, 9.0f, 1.0f);
+    g.drawRoundedRectangle(bounds, controlRadius, 1.0f);
 
     juce::Path chevron;
     const auto cx = static_cast<float>(width - 18);
@@ -118,14 +156,14 @@ void VocalChainLookAndFeel::drawComboBox(juce::Graphics& g, int width, int heigh
     chevron.lineTo(cx, cy + 2.0f);
     chevron.lineTo(cx + 4.0f, cy - 2.0f);
     g.setColour(box.findColour(juce::ComboBox::arrowColourId));
-    g.strokePath(chevron, juce::PathStrokeType(1.8f, juce::PathStrokeType::curved,
+    g.strokePath(chevron, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved,
                                                juce::PathStrokeType::rounded));
 }
 
 void VocalChainLookAndFeel::positionComboBoxText(juce::ComboBox& box, juce::Label& label)
 {
-    label.setBounds(13, 1, box.getWidth() - 42, box.getHeight() - 2);
-    label.setFont(juce::FontOptions(14.0f));
+    label.setBounds(12, 1, box.getWidth() - 40, box.getHeight() - 2);
+    label.setFont(juce::FontOptions(13.0f));
 }
 
 MainComponent::MainComponent()
@@ -148,7 +186,7 @@ MainComponent::MainComponent()
     open.setComponentID("primary");
     monitor.setClickingTogglesState(true);
     monitor.setToggleState(engine.isMonitoringEnabled(), juce::dontSendNotification);
-    chainList.setRowHeight(68);
+    chainList.setRowHeight(56);
     chainList.setOutlineThickness(0);
     chainList.getViewport()->setScrollBarsShown(true, false);
     availablePlugins.setTextWhenNothingSelected("Choose a VST3 effect");
@@ -156,7 +194,9 @@ MainComponent::MainComponent()
     status.setText("Select a microphone, scan VST3 plug-ins, then build your Vocal Chain.",
                    juce::dontSendNotification);
     status.setColour(juce::Label::textColourId, juce::Colour(textMuted));
-    status.setFont(juce::FontOptions(13.0f));
+    status.setFont(juce::FontOptions(12.5f));
+    addAndMakeVisible(status);
+    inputLevel = engine.deviceManager().getInputLevelGetter();
     loadPluginCache();
     refreshAvailablePlugins();
     if (engine.knownPlugins().getNumTypes() > 0)
@@ -172,7 +212,7 @@ MainComponent::MainComponent()
         status.setText("VocalChain Virtual Mic is ready for Discord.",
                        juce::dontSendNotification);
     startTimerHz(60);
-    setSize(1120, 760);
+    setSize(1180, 780);
 }
 
 MainComponent::~MainComponent()
@@ -189,114 +229,160 @@ void MainComponent::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colour(background));
 
-    juce::ColourGradient glow(juce::Colour(accent).withAlpha(0.16f),
-                               static_cast<float>(getWidth()) * 0.72f, -40.0f,
+    // Single accent bloom behind the header, matching the site hero.
+    juce::ColourGradient glow(juce::Colour(accent).withAlpha(0.10f),
+                               static_cast<float>(getWidth()) * 0.5f, -120.0f,
                                juce::Colours::transparentBlack,
-                               static_cast<float>(getWidth()) * 0.45f, 300.0f, true);
+                               static_cast<float>(getWidth()) * 0.5f, 380.0f, true);
     g.setGradientFill(glow);
     g.fillRect(getLocalBounds());
 
-    auto body = getLocalBounds().reduced(24);
-    auto left = body.removeFromLeft(330).toFloat();
-    body.removeFromLeft(16);
-    drawCard(g, left);
-    drawCard(g, body.toFloat());
+    drawCard(g, inputPanel.toFloat());
+    drawCard(g, chainPanel.toFloat());
 
-    g.setColour(juce::Colour(textMuted));
-    g.setFont(juce::FontOptions(11.0f, juce::Font::bold));
-    g.drawText("AUDIO INPUT", static_cast<int>(left.getX() + 18), static_cast<int>(left.getY() + 14),
-               180, 22, juce::Justification::centredLeft);
-    g.drawText("EFFECT CHAIN", body.getX() + 18, body.getY() + 14, 180, 22,
-               juce::Justification::centredLeft);
+    drawCaption(g, "AUDIO INPUT", inputPanel.reduced(16, 0).withY(inputPanel.getY() + 15).withHeight(18),
+                juce::Colour(textFaint));
+    drawCaption(g, "EFFECT CHAIN", chainPanel.reduced(16, 0).withY(chainPanel.getY() + 15).withHeight(18),
+                juce::Colour(textFaint));
+
+    paintInputMeter(g);
+
+    // Status strip
+    g.setColour(juce::Colour(border));
+    g.fillRect(statusStrip.withHeight(1));
+    const auto running = engine.isVirtualMicrophoneRunning();
+    g.setColour(running ? juce::Colour(accent) : juce::Colour(textFaint));
+    g.fillEllipse(static_cast<float>(statusStrip.getX() + 20),
+                  static_cast<float>(statusStrip.getCentreY()) - 3.0f, 6.0f, 6.0f);
+}
+
+void MainComponent::paintInputMeter(juce::Graphics& g)
+{
+    if (meterArea.isEmpty()) return;
+
+    const auto count = static_cast<int>(meterHistory.size());
+    const auto gap = 3.0f;
+    const auto barWidth = (static_cast<float>(meterArea.getWidth()) - gap * static_cast<float>(count - 1))
+                        / static_cast<float>(count);
+    const auto bottom = static_cast<float>(meterArea.getBottom());
+    const auto fullHeight = static_cast<float>(meterArea.getHeight());
+
+    for (int i = 0; i < count; ++i) {
+        // Oldest sample on the left, newest on the right.
+        const auto value = meterHistory[static_cast<size_t>((meterWriteIndex + 1 + i) % count)];
+        const auto x = static_cast<float>(meterArea.getX()) + static_cast<float>(i) * (barWidth + gap);
+
+        // Idle track, so a silent input still reads as a meter rather than a stray rule.
+        g.setColour(juce::Colour(border).withAlpha(0.45f));
+        g.fillRoundedRectangle({x, static_cast<float>(meterArea.getY()), barWidth, fullHeight}, 2.0f);
+
+        const auto height = juce::jmax(2.0f, value * fullHeight);
+        const auto bar = juce::Rectangle<float>(x, bottom - height, barWidth, height);
+        juce::ColourGradient fill(juce::Colour(accentDeep), bar.getX(), bottom,
+                                   juce::Colour(accent), bar.getX(), static_cast<float>(meterArea.getY()), false);
+        g.setGradientFill(fill);
+        g.fillRoundedRectangle(bar, 2.0f);
+    }
 }
 
 void MainComponent::resized()
 {
-    auto area = getLocalBounds().reduced(24);
-    status.setBounds({});
+    auto area = getLocalBounds();
 
-    auto deviceCard = area.removeFromLeft(330);
-    area.removeFromLeft(16);
-    deviceCard.reduce(18, 14);
-    deviceCard.removeFromTop(30);
-    devices.setBounds(deviceCard);
+    statusStrip = area.removeFromBottom(38);
+    status.setBounds(statusStrip.withTrimmedLeft(36).withTrimmedRight(20));
 
-    auto chainCard = area.reduced(18, 14);
-    chainCard.removeFromTop(30);
-    auto presetRow = chainCard.removeFromBottom(44);
-    save.setBounds(presetRow.removeFromLeft(128).reduced(0, 3));
-    presetRow.removeFromLeft(8);
-    load.setBounds(presetRow.removeFromLeft(128).reduced(0, 3));
+    auto body = area.reduced(18);
+    inputPanel = body.removeFromLeft(374);
+    body.removeFromLeft(16);
+    chainPanel = body;
 
-    chainCard.removeFromBottom(10);
-    auto actionRow = chainCard.removeFromBottom(44);
-    remove.setBounds(actionRow.removeFromLeft(92).reduced(0, 3));
-    actionRow.removeFromLeft(7);
-    up.setBounds(actionRow.removeFromLeft(66).reduced(0, 3));
-    actionRow.removeFromLeft(7);
-    down.setBounds(actionRow.removeFromLeft(72).reduced(0, 3));
-    actionRow.removeFromLeft(7);
-    bypass.setBounds(actionRow.removeFromLeft(90).reduced(0, 3));
-    actionRow.removeFromLeft(7);
-    open.setBounds(actionRow.removeFromLeft(126).reduced(0, 3));
-    actionRow.removeFromLeft(7);
-    monitor.setBounds(actionRow.removeFromLeft(118).reduced(0, 3));
+    // Left panel: the device selector keeps its natural height so the controls
+    // and the meter stay grouped with it instead of drifting to the bottom.
+    auto inputInner = inputPanel.reduced(16, 15);
+    inputInner.removeFromTop(26);
+    devices.setBounds(inputInner.removeFromTop(juce::jmin(272, inputInner.getHeight())));
 
-    chainCard.removeFromBottom(10);
-    auto pluginRow = chainCard.removeFromTop(44);
-    scan.setBounds(pluginRow.removeFromLeft(118).reduced(0, 3));
-    pluginRow.removeFromLeft(8);
-    add.setBounds(pluginRow.removeFromRight(92).reduced(0, 3));
-    pluginRow.removeFromRight(8);
-    availablePlugins.setBounds(pluginRow.reduced(0, 3));
-    chainCard.removeFromTop(10);
-    chainList.setBounds(chainCard);
+    inputInner.removeFromTop(4);
+    auto controlRow = inputInner.removeFromTop(38);
+    scan.setBounds(controlRow.removeFromLeft(112));
+    controlRow.removeFromLeft(8);
+    monitor.setBounds(controlRow.removeFromLeft(120));
+
+    inputInner.removeFromTop(16);
+    meterArea = inputInner.removeFromTop(46);
+
+    // Right panel: plug-in picker on the caption row, actions along the bottom.
+    auto chainInner = chainPanel.reduced(16, 15);
+    auto headerRow = chainInner.removeFromTop(34);
+    add.setBounds(headerRow.removeFromRight(66).reduced(0, 2));
+    headerRow.removeFromRight(8);
+    availablePlugins.setBounds(headerRow.removeFromRight(juce::jmin(240, headerRow.getWidth() - 120))
+                                   .reduced(0, 2));
+    chainInner.removeFromTop(12);
+
+    auto actionRow = chainInner.removeFromBottom(38);
+    load.setBounds(actionRow.removeFromRight(112));
+    actionRow.removeFromRight(8);
+    save.setBounds(actionRow.removeFromRight(112));
+    up.setBounds(actionRow.removeFromLeft(62));
+    actionRow.removeFromLeft(8);
+    down.setBounds(actionRow.removeFromLeft(70));
+    actionRow.removeFromLeft(8);
+    bypass.setBounds(actionRow.removeFromLeft(84));
+    actionRow.removeFromLeft(8);
+    remove.setBounds(actionRow.removeFromLeft(88));
+    actionRow.removeFromLeft(8);
+    open.setBounds(actionRow.removeFromLeft(116));
+
+    chainInner.removeFromBottom(14);
+    chainList.setBounds(chainInner);
 }
 
 int MainComponent::getNumRows() { return engine.pluginCount(); }
 
 void MainComponent::paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected)
 {
-    auto card = juce::Rectangle<float>(7.0f, 5.0f, static_cast<float>(width - 14),
-                                       static_cast<float>(height - 10));
-    g.setColour(selected ? juce::Colour(accent).withAlpha(0.20f) : juce::Colour(surfaceRaised));
-    g.fillRoundedRectangle(card, 11.0f);
-    const auto selectedGlow = 0.66f + 0.09f * std::sin(animationPhase * 1.35f);
-    g.setColour(selected ? juce::Colour(accentBright).withAlpha(selectedGlow)
-                         : juce::Colour(border));
-    g.drawRoundedRectangle(card, 11.0f, selected ? 1.4f : 1.0f);
-    if (auto* plugin = engine.pluginAt(row)) {
-        const auto bypassed = engine.isBypassed(row);
-        g.setColour(bypassed ? juce::Colour(textMuted) : juce::Colour(text));
-        g.setFont(juce::FontOptions(15.0f, juce::Font::bold));
-        g.drawText(plugin->getName(), 54, 12, width - 150, 23, juce::Justification::centredLeft);
-        g.setColour(juce::Colour(textMuted));
-        g.setFont(juce::FontOptions(11.0f));
-        g.drawText("VST3 EFFECT", 54, 34, width - 150, 17, juce::Justification::centredLeft);
+    auto card = juce::Rectangle<float>(5.0f, 3.0f, static_cast<float>(width - 10),
+                                       static_cast<float>(height - 6));
+    g.setColour(selected ? juce::Colour(accent).withAlpha(0.07f) : juce::Colour(surfaceRaised));
+    g.fillRoundedRectangle(card, 10.0f);
+    g.setColour(selected ? juce::Colour(accent).withAlpha(0.38f) : juce::Colour(border));
+    g.drawRoundedRectangle(card.reduced(0.5f), 10.0f, 1.0f);
 
-        g.setColour(selected ? juce::Colour(accent) : juce::Colour(0xff343b4d));
-        g.fillRoundedRectangle(18.0f, 17.0f, 26.0f, 26.0f, 8.0f);
-        g.setColour(juce::Colours::white.withAlpha(0.92f));
-        g.setFont(juce::FontOptions(12.0f, juce::Font::bold));
-        g.drawText(juce::String(row + 1), 18, 17, 26, 26, juce::Justification::centred);
+    auto* plugin = engine.pluginAt(row);
+    if (plugin == nullptr) return;
 
-        const auto stateColour = bypassed ? juce::Colour(textMuted) : juce::Colour(success);
-        g.setColour(stateColour.withAlpha(0.16f));
-        g.fillRoundedRectangle(static_cast<float>(width - 91), 20.0f, 66.0f, 22.0f, 11.0f);
-        g.setColour(stateColour);
-        g.setFont(juce::FontOptions(10.0f, juce::Font::bold));
-        g.drawText(bypassed ? "BYPASS" : "ACTIVE", width - 91, 20, 66, 22,
-                   juce::Justification::centred);
-    }
+    const auto bypassed = engine.isBypassed(row);
+
+    g.setColour(juce::Colour(textFaint));
+    g.setFont(juce::FontOptions(11.0f));
+    g.drawText(juce::String(row + 1), 18, 0, 22, height, juce::Justification::centredLeft);
+
+    const auto textLeft = 44;
+    const auto textWidth = width - textLeft - 96;
+    g.setColour(juce::Colour(bypassed ? textMuted : text));
+    g.setFont(juce::FontOptions(13.5f, juce::Font::bold));
+    g.drawText(plugin->getName(), textLeft, 12, textWidth, 18, juce::Justification::centredLeft);
+    drawCaption(g, "VST3 EFFECT", {textLeft, 29, textWidth, 14}, juce::Colour(textFaint), 9.0f);
+
+    const auto pill = juce::Rectangle<float>(static_cast<float>(width - 86),
+                                             static_cast<float>(height) * 0.5f - 10.0f, 62.0f, 20.0f);
+    if (bypassed) drawStatePill(g, "BYPASS", pill, juce::Colour(textMuted), 0.12f);
+    else drawStatePill(g, "ACTIVE", pill, juce::Colour(accent), 0.14f);
 }
 
 void MainComponent::timerCallback()
 {
-    animationPhase += 0.045f;
-    if (animationPhase > juce::MathConstants<float>::twoPi)
-        animationPhase -= juce::MathConstants<float>::twoPi;
-    if (const auto selectedRow = chainList.getSelectedRow(); selectedRow >= 0)
-        chainList.repaintRow(selectedRow);
+    // Shift a new peak into the meter history roughly every 60 ms.
+    if (++meterTick % 4 == 0 && inputLevel != nullptr) {
+        const auto level = static_cast<float>(inputLevel->getCurrentLevel());
+        const auto decibels = juce::Decibels::gainToDecibels(level, -60.0f);
+        meterWriteIndex = (meterWriteIndex + 1) % static_cast<int>(meterHistory.size());
+        meterHistory[static_cast<size_t>(meterWriteIndex)] =
+            juce::jmap(decibels, -60.0f, 0.0f, 0.0f, 1.0f);
+        repaint(meterArea);
+    }
 
     if (isThreadRunning()) {
         juce::String current;
