@@ -1,0 +1,90 @@
+---
+import { buildCommands, presetPoints, site } from '../data/site';
+import Button from './Button.astro';
+import GitHub from './icons/GitHub.astro';
+import SectionHeading from './SectionHeading.astro';
+
+// Abbreviated but structurally accurate output of ChainState::toJson().
+const presetJson = `{
+  "_type": "vocalChain",
+  "properties": {
+    "schemaVersion": 1,
+    "name": "Broadcast Voice"
+  },
+  "children": [
+    {
+      "_type": "plugin",
+      "properties": {
+        "name": "Channel EQ",
+        "format": "VST3",
+        "bypassed": false,
+        "state": "TVNUM0NodW5rAAAB…"
+      }
+    }
+  ]
+}`;
+---
+
+<section id="presets" class="scroll-mt-24 border-t border-white/[0.06] py-24 sm:py-32">
+  <div class="container-page">
+    <div class="grid items-start gap-14 lg:grid-cols-2 lg:gap-20">
+      <!-- Preset file -->
+      <div class="overflow-hidden rounded-2xl border border-white/[0.08] bg-ink-900">
+        <div class="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2.5">
+          <span class="size-1.5 rounded-full bg-signal-400"></span>
+          <span class="font-mono text-[11px] text-mist-500">broadcast-voice.vocalchain.json</span>
+        </div>
+        <pre
+          class="overflow-x-auto px-5 py-5 font-mono text-[12px] leading-[1.7] text-mist-500"><code>{presetJson}</code></pre>
+      </div>
+
+      <!-- Copy -->
+      <div>
+        <SectionHeading
+          eyebrow="Presets & open source"
+          title="Your chain is a file you own"
+          align="left"
+          lead="Presets are plain JSON on your disk. Keep them in version control, copy them between machines, or read them to see exactly what a chain contains."
+        />
+
+        <dl class="mt-8 space-y-6">
+          {
+            presetPoints.map((point) => (
+              <div class="border-l border-white/10 pl-5">
+                <dt class="text-[15px] font-medium text-mist-100">{point.title}</dt>
+                <dd class="mt-2 text-sm leading-relaxed text-mist-600">{point.detail}</dd>
+              </div>
+            ))
+          }
+        </dl>
+
+        <Button href={site.repo} variant="secondary" class="mt-8" external>
+          <GitHub class="size-[15px] " />
+          Read the source
+        </Button>
+      </div>
+    </div>
+
+    <!-- Build it yourself -->
+    <div class="mt-14 overflow-hidden rounded-2xl border border-white/[0.08] bg-ink-900">
+      <div class="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2.5">
+        <div class="flex gap-1.5" aria-hidden="true">
+          <span class="size-2.5 rounded-full bg-white/10"></span>
+          <span class="size-2.5 rounded-full bg-white/10"></span>
+          <span class="size-2.5 rounded-full bg-white/10"></span>
+        </div>
+        <span class="ml-1 font-mono text-[11px] text-mist-600">build from source</span>
+      </div>
+      <div class="overflow-x-auto px-5 py-5 font-mono text-[13px] leading-[2]">
+        {
+          buildCommands.map((line) => (
+            <div class="whitespace-pre">
+              <span class="text-signal-400 select-none">{line.prompt}&nbsp;</span>
+              <span class="text-mist-300">{line.command}</span>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+</section>
