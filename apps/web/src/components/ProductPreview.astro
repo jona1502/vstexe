@@ -42,7 +42,7 @@ const hasScreenshot = fs.existsSync(new URL(`../../public${screenshot}`, import.
 </section>
 
 <style>
-  /* Slight recline that straightens on hover, as on the reference page. */
+  /* Slight fixed recline gives the preview depth without interactive motion. */
   .tilt-stage {
     position: relative;
     perspective: 2000px;
@@ -51,14 +51,6 @@ const hasScreenshot = fs.existsSync(new URL(`../../public${screenshot}`, import.
   .tilt {
     transform: rotateX(7deg) scale(0.985);
     transform-origin: top center;
-    transition:
-      transform 700ms cubic-bezier(0.16, 1, 0.3, 1),
-      border-color 700ms ease;
-  }
-
-  .tilt-stage:hover .tilt {
-    transform: rotateX(0deg) scale(1);
-    border-color: rgba(255, 255, 255, 0.14);
   }
 
   @media (prefers-reduced-motion: reduce) {
