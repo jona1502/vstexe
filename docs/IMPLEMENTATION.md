@@ -8,20 +8,9 @@
 - versioned JSON presets with opaque plug-in state
 - microphone device selector
 
-Before M1 is considered complete, build and run it on Fedora and Windows 11 and
-add meters. VST3 discovery now runs one module at a time in a timeout-controlled
+Before M1 is considered complete, build and run it on Windows 11 and add
+meters. VST3 discovery now runs one module at a time in a timeout-controlled
 helper process; failed modules are persisted in the plug-in blacklist.
-
-## M2 — Fedora virtual microphone
-
-- implement `VirtualMicrophone` with native PipeWire streams
-- publish a stable `Audio/Source` node named `InputRack Virtual Microphone`
-- route processed blocks directly to it, not through a monitor output
-- reconnect after PipeWire restart and publish silence while capture is absent
-- package as AppImage and RPM for the first Fedora release
-
-Acceptance: Firefox, Discord and OBS can select the source and receive the same
-processed signal for a two-hour soak test without xruns.
 
 ## M3 — Windows virtual microphone
 
@@ -42,7 +31,7 @@ Discord, OBS, Teams and Chromium receive processed audio after reboot.
 - missing-plug-in placeholders in presets
 - input/output meters, global bypass and clipping protection
 - crash recovery, device hotplug and preset migration tests
-- CI builds on Fedora and Windows; signed release pipeline
+- CI builds on Windows; signed release pipeline
 
 ## Known build limitation
 

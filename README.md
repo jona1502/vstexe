@@ -1,9 +1,9 @@
 # InputRack
 
-InputRack is a Windows 11 and Fedora desktop application that processes a
-physical microphone through a user-defined chain of 64-bit VST3 effects and
-publishes the processed stereo signal through an output other applications can
-use as a microphone.
+InputRack is a Windows 11 desktop application that processes a physical
+microphone through a user-defined chain of 64-bit VST3 effects and publishes
+the processed stereo signal through an output other applications can use as a
+microphone.
 
 ## Download
 
@@ -20,26 +20,19 @@ installed on a machine with Secure Boot enabled. See
 
 ## MVP
 
-- Windows 11 and Fedora Linux
+- Windows 11
 - mono microphone input with a stereo, 48 kHz processing and output path
 - VST3 discovery and hosting
 - add, remove, reorder, bypass and edit plug-ins
 - versioned InputRack presets including complete plug-in state
 - publishing through any virtual audio cable
-- PipeWire virtual source on Fedora
 - WDM/WaveRT virtual capture endpoint on Windows 11 (driver not release-signed)
 
 ## Build
 
-Requirements: CMake 3.25+, Ninja, a C++20 compiler and platform audio
+Requirements: CMake 3.25+, Ninja, a C++20 compiler and the Windows audio
 development packages. JUCE is fetched at its pinned release unless
 `INPUTRACK_JUCE_SOURCE_DIR` points to a local checkout.
-
-```bash
-cmake --preset linux-debug
-cmake --build --preset linux-debug
-ctest --preset linux-debug
-```
 
 On Windows, CMake and the MSVC toolchain ship inside Visual Studio and are not
 on the global `PATH`. Dot-source the helper once per shell, then run the

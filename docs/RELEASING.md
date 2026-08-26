@@ -57,8 +57,7 @@ means no elevation prompt appears.
 
 The checksum protects against a corrupted or intercepted download. It does not
 protect against a compromised GitHub account, because installer and checksum
-share one origin; only a code signature would. Updates are Windows-only, since
-`JUCE_USE_CURL=0` leaves the Linux build without TLS.
+share one origin; only a code signature would.
 
 ## Publishing route
 
