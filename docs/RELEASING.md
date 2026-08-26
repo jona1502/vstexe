@@ -42,6 +42,10 @@ This constrains what a release may look like:
   its `.sha256` is deliberately ignored, because the download could not be
   verified. `build-installer.ps1` emits both, so this holds as long as releases
   come from the workflow.
+- **Names, tag and URLs must agree exactly.** Both the app and website accept
+  only `InputRack-VERSION-Windows-x64-Setup.exe` and its `.sha256` from the
+  matching `vVERSION` GitHub release path. Drafts, prereleases, duplicate assets
+  and unrelated executables are ignored.
 - **Tags stay `vMAJOR.MINOR.PATCH`.** Versions are compared segment by segment,
   so `0.1.10` correctly supersedes `0.1.9`.
 

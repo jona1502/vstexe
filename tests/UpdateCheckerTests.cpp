@@ -8,9 +8,12 @@ void expect(bool condition, const char* message)
     if (!condition) { std::cerr << "FAIL: " << message << '\n'; ++failures; }
 }
 
-juce::String release(const juce::String& tag, const juce::String& assets)
+juce::String release(const juce::String& tag, const juce::String& assets,
+                     bool draft = false, bool prerelease = false)
 {
-    return "{\"tag_name\":\"" + tag + "\",\"assets\":[" + assets + "]}";
+    return "{\"tag_name\":\"" + tag + "\",\"draft\":"
+        + (draft ? "true" : "false") + ",\"prerelease\":"
+        + (prerelease ? "true" : "false") + ",\"assets\":[" + assets + "]}";
 }
 
 juce::String asset(const juce::String& name, const juce::String& url)
@@ -55,6 +58,15 @@ int main()
     expect(!Checker::parseLatestRelease(
                release("v0.1.3", setupAsset + "," + checksumAsset), "0.1.4").has_value(),
            "an older release is not offered");
+    expect(!Checker::parseLatestRelease(
+               release("v0.1.5-beta.1", setupAsset + "," + checksumAsset), "0.1.4").has_value(),
+           "a non-semantic release tag is refused");
+    expect(!Checker::parseLatestRelease(
+               release("v0.1.5", setupAsset + "," + checksumAsset, true), "0.1.4").has_value(),
+           "a draft release is refused");
+    expect(!Checker::parseLatestRelease(
+               release("v0.1.5", setupAsset + "," + checksumAsset, false, true), "0.1.4").has_value(),
+           "a prerelease is refused by the stable update channel");
 
     // Without a checksum the download could not be verified, so no update is
     // better than an unverifiable one.
@@ -70,6 +82,13 @@ int main()
                release("v0.1.5", offSite + "," + checksumAsset), "0.1.4").has_value(),
            "an asset hosted off GitHub is refused");
 
+    const auto wrongReleasePath =
+        asset("InputRack-0.1.5-Windows-x64-Setup.exe",
+              "https://github.com/jona1502/vstexe/releases/download/v0.1.4/InputRack-0.1.5-Windows-x64-Setup.exe");
+    expect(!Checker::parseLatestRelease(
+               release("v0.1.5", wrongReleasePath + "," + checksumAsset), "0.1.4").has_value(),
+           "an asset from a different release path is refused");
+
     const auto otherSetup =
         asset("OtherProduct-0.1.5-Windows-x64-Setup.exe",
               "https://github.com/jona1502/vstexe/releases/download/v0.1.5/OtherProduct-0.1.5-Windows-x64-Setup.exe");
@@ -84,6 +103,25 @@ int main()
            "malformed payloads yield no update");
     expect(!Checker::parseLatestRelease("{}", "0.1.4").has_value(),
            "a payload without a tag yields no update");
+
+    const juce::String hash(juce::String::repeatedString("a", 64));
+    const auto parsedHash = Checker::parseSha256(
+        hash + "  InputRack-0.1.5-Windows-x64-Setup.exe\n",
+        "InputRack-0.1.5-Windows-x64-Setup.exe");
+    expect(parsedHash.has_value() && *parsedHash == hash,
+           "the workflow checksum format is accepted");
+    expect(!Checker::parseSha256(
+               "abcd  InputRack-0.1.5-Windows-x64-Setup.exe\n",
+               "InputRack-0.1.5-Windows-x64-Setup.exe").has_value(),
+           "a short checksum is refused");
+    expect(!Checker::parseSha256(
+               hash + "  OtherProduct.exe\n",
+               "InputRack-0.1.5-Windows-x64-Setup.exe").has_value(),
+           "a checksum naming another file is refused");
+    expect(!Checker::parseSha256(
+               hash + "  InputRack-0.1.5-Windows-x64-Setup.exe\nextra\n",
+               "InputRack-0.1.5-Windows-x64-Setup.exe").has_value(),
+           "a checksum file with extra content is refused");
 
     if (failures == 0) std::cout << "UpdateCheckerTests passed\n";
     return failures == 0 ? 0 : 1;

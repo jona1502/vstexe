@@ -46,6 +46,10 @@ public:
     static std::optional<AvailableUpdate> parseLatestRelease(const juce::String& json,
                                                              const juce::String& currentVersion);
 
+    /** Parses the exact checksum-file format emitted by the release workflow. */
+    static std::optional<juce::String> parseSha256(const juce::String& contents,
+                                                   const juce::String& expectedFilename);
+
     /** Hands the installer to Windows and asks the app to quit. */
     static bool launchInstaller(const juce::File& setup);
 

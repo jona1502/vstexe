@@ -78,12 +78,29 @@ import Windows from './icons/Windows.astro';
     const response = await fetch(site.releasesApi, { headers: { Accept: 'application/vnd.github+json' } });
     if (!response.ok) return;
 
-    const release = (await response.json()) as { tag_name?: string; assets?: ReleaseAsset[] };
-    const setup = release.assets?.find((asset) => asset.name.toLowerCase().endsWith('.exe'));
-    if (!setup || !button) return;
+    const release = (await response.json()) as {
+      tag_name?: string;
+      draft?: boolean;
+      prerelease?: boolean;
+      assets?: ReleaseAsset[];
+    };
+    const version = release.tag_name?.match(/^v(\d+\.\d+\.\d+)$/)?.[1];
+    if (!version || release.draft || release.prerelease || !button) return;
+
+    const installerName = `InputRack-${version}-Windows-x64-Setup.exe`;
+    const checksumName = `${installerName}.sha256`;
+    const releaseRoot = `${site.repo}/releases/download/v${version}/`;
+    const setups = release.assets?.filter(
+      (asset) => asset.name === installerName && asset.browser_download_url === releaseRoot + installerName,
+    );
+    const checksums = release.assets?.filter(
+      (asset) => asset.name === checksumName && asset.browser_download_url === releaseRoot + checksumName,
+    );
+    if (setups?.length !== 1 || checksums?.length !== 1) return;
+    const setup = setups[0];
 
     button.href = setup.browser_download_url;
-    if (label && release.tag_name) label.textContent = `Download for Windows · ${release.tag_name}`;
+    if (label) label.textContent = `Download for Windows · v${version}`;
     if (meta) {
       const megabytes = (setup.size / 1024 / 1024).toFixed(1);
       meta.textContent = `${setup.name} · ${megabytes} MB · SHA-256 checksum on the releases page`;
