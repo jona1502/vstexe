@@ -27,3 +27,7 @@ add_test(NAME update_checker_tests COMMAND update_checker_tests)
 add_executable(plugin_browsing_tests PluginBrowsingTests.cpp)
 target_link_libraries(plugin_browsing_tests PRIVATE inputrack_engine)
 add_test(NAME plugin_browsing_tests COMMAND plugin_browsing_tests)
+
+add_executable(isolated_plugin_scanner_tests IsolatedPluginScannerTests.cpp)
+target_link_libraries(isolated_plugin_scanner_tests PRIVATE inputrack_scanner)
+add_test(NAME isolated_plugin_scanner_tests COMMAND isolated_plugin_scanner_tests)

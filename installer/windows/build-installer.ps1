@@ -22,6 +22,11 @@ if (-not (Test-Path -LiteralPath $application)) {
     throw "Release application not found at $application. Build the windows-release preset first."
 }
 $application = (Resolve-Path -LiteralPath $application).Path
+$scanner = Join-Path $BuildDirectory 'apps\scanner\InputRackPluginScanner_artefacts\Release\InputRackPluginScanner.exe'
+if (-not (Test-Path -LiteralPath $scanner)) {
+    throw "Release plug-in scanner not found at $scanner. Build the windows-release preset first."
+}
+$scanner = (Resolve-Path -LiteralPath $scanner).Path
 
 $compilerCandidates = @(
     (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe'),
@@ -41,7 +46,7 @@ if ([string]::IsNullOrWhiteSpace($compiler)) {
 
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $definition = Join-Path $PSScriptRoot 'InputRack.iss'
-& $compiler "/DAppVersion=$Version" "/DAppBinary=$application" `
+& $compiler "/DAppVersion=$Version" "/DAppBinary=$application" "/DScannerBinary=$scanner" `
     "/DOutputDirectory=$OutputDirectory" $definition
 if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup failed with exit code $LASTEXITCODE."

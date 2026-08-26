@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include <inputrack/IsolatedPluginScanner.h>
 
 namespace {
 // Mirrors the design tokens in apps/web/src/styles/global.css so the app and
@@ -34,6 +35,16 @@ juce::File settingsFile()
 juce::File pluginCacheFile()
 {
     return pluginDataDirectory().getChildFile("known-plugins.xml");
+}
+
+juce::File pluginScannerExecutable()
+{
+    auto name = juce::String("InputRackPluginScanner");
+#if JUCE_WINDOWS
+    name += ".exe";
+#endif
+    return juce::File::getSpecialLocation(juce::File::currentExecutableFile)
+        .getSiblingFile(name);
 }
 
 void drawCard(juce::Graphics& g, juce::Rectangle<float> bounds)
@@ -391,8 +402,13 @@ void MainComponent::timerCallback()
         refreshAvailablePlugins();
         scan.setEnabled(true);
         availablePlugins.setEnabled(true);
-        status.setText(juce::String(engine.knownPlugins().getNumTypes())
-                           + " VST3 plug-ins found and saved.",
+        const auto skipped = engine.knownPlugins().getBlacklistedFiles().size();
+        auto message = juce::String(engine.knownPlugins().getNumTypes())
+            + " VST3 plug-ins found and saved.";
+        if (skipped > 0)
+            message += " " + juce::String(skipped) + " unsafe plug-in"
+                + (skipped == 1 ? " was" : "s were") + " skipped.";
+        status.setText(message,
                        juce::dontSendNotification);
     }
 }
@@ -431,6 +447,14 @@ void MainComponent::buttonClicked(juce::Button* button)
 void MainComponent::scanPlugins()
 {
     if (isThreadRunning()) return;
+    const auto helper = pluginScannerExecutable();
+    if (!helper.existsAsFile()) {
+        showError("Scanner unavailable",
+                  "InputRackPluginScanner is missing. Reinstall InputRack and try again.");
+        return;
+    }
+    engine.knownPlugins().setCustomScanner(
+        std::make_unique<inputrack::IsolatedPluginScanner>(helper));
     scan.setEnabled(false);
     availablePlugins.setEnabled(false);
     scanProgress.store(0.0f);

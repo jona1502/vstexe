@@ -23,6 +23,7 @@ endif()
 add_subdirectory(platform)
 add_subdirectory(engine)
 add_subdirectory(update)
+add_subdirectory(apps/scanner)
 add_subdirectory(apps/desktop)
 
 if(INPUTRACK_BUILD_TESTS)

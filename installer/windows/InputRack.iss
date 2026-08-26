@@ -4,6 +4,9 @@
 #ifndef AppBinary
   #error AppBinary must point to the release InputRack.exe
 #endif
+#ifndef ScannerBinary
+  #error ScannerBinary must point to the release InputRackPluginScanner.exe
+#endif
 #ifndef OutputDirectory
   #define OutputDirectory "..\..\out\windows"
 #endif
@@ -52,6 +55,7 @@ german.CableBody=InputRack bearbeitet dein Mikrofon, aber unter Windows kann nur
 
 [Files]
 Source: "{#AppBinary}"; DestDir: "{app}"; DestName: "InputRack.exe"; Flags: ignoreversion
+Source: "{#ScannerBinary}"; DestDir: "{app}"; DestName: "InputRackPluginScanner.exe"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\InputRack"; Filename: "{app}\InputRack.exe"

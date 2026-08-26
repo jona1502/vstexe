@@ -8,9 +8,9 @@
 - versioned JSON presets with opaque plug-in state
 - microphone device selector
 
-Before M1 is considered complete, build and run it on Fedora and Windows 11,
-move scanning to a helper executable, add meters and make bypass toggle state
-visible in the list.
+Before M1 is considered complete, build and run it on Fedora and Windows 11 and
+add meters. VST3 discovery now runs one module at a time in a timeout-controlled
+helper process; failed modules are persisted in the plug-in blacklist.
 
 ## M2 — Fedora virtual microphone
 
