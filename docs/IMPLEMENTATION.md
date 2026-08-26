@@ -3,7 +3,7 @@
 ## M1 — desktop audio graph (current foundation)
 
 - C++20/CMake/JUCE application
-- fixed mono 48 kHz graph
+- mono input with a stereo 48 kHz processing and output graph
 - VST3 scan, load, remove, reorder, bypass and native editor
 - versioned JSON presets with opaque plug-in state
 - microphone device selector

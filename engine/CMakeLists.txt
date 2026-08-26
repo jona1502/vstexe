@@ -1,5 +1,6 @@
 add_library(inputrack_engine STATIC
-    src/ChainState.cpp src/PluginBrowsing.cpp src/PluginChainEngine.cpp)
+    src/ChainState.cpp src/ChannelAdapterProcessor.cpp src/PluginBrowsing.cpp
+    src/PluginChainEngine.cpp)
 target_include_directories(inputrack_engine PUBLIC include)
 target_link_libraries(inputrack_engine PUBLIC
     inputrack_platform

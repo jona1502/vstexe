@@ -1,7 +1,37 @@
+#include <inputrack/ChannelAdapterProcessor.h>
 #include <inputrack/PluginChainEngine.h>
 
 namespace inputrack {
 namespace {
+struct PluginLayout {
+    int inputs{};
+    int outputs{};
+
+    explicit operator bool() const noexcept { return inputs > 0 && outputs > 0; }
+};
+
+PluginLayout configurePluginLayout(juce::AudioPluginInstance& plugin)
+{
+    if (plugin.getBusCount(true) == 0 || plugin.getBusCount(false) == 0)
+        return {};
+
+    static constexpr PluginLayout candidates[] = {
+        {2, 2}, {1, 2}, {1, 1}, {2, 1}
+    };
+    for (const auto candidate : candidates) {
+        auto layout = plugin.getBusesLayout();
+        layout.getChannelSet(true, 0) = candidate.inputs == 2
+            ? juce::AudioChannelSet::stereo() : juce::AudioChannelSet::mono();
+        layout.getChannelSet(false, 0) = candidate.outputs == 2
+            ? juce::AudioChannelSet::stereo() : juce::AudioChannelSet::mono();
+        if (plugin.setBusesLayout(layout)) {
+            plugin.setRateAndBufferSizeDetails(PluginChainEngine::sampleRate, 256);
+            return candidate;
+        }
+    }
+    return {};
+}
+
 class VirtualMicrophoneSink final : public juce::AudioProcessor {
 public:
     explicit VirtualMicrophoneSink(VirtualMicrophone& backend)
@@ -49,6 +79,9 @@ PluginChainEngine::PluginChainEngine()
     graph = std::make_unique<juce::AudioProcessorGraph>();
     inputNode = graph->addNode(std::make_unique<juce::AudioProcessorGraph::AudioGraphIOProcessor>(
         juce::AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode));
+    inputUpmixNode = graph->addNode(
+        std::make_unique<ChannelAdapterProcessor>(
+            ChannelAdapterProcessor::Direction::monoToStereo));
     outputNode = graph->addNode(std::make_unique<juce::AudioProcessorGraph::AudioGraphIOProcessor>(
         juce::AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode));
     virtualMicNode = graph->addNode(std::make_unique<VirtualMicrophoneSink>(*virtualMicrophone));
@@ -73,10 +106,17 @@ juce::String PluginChainEngine::initialiseAudio(const juce::String& preferredInp
     if (error = devices.setAudioDeviceSetup(setup, true); error.isNotEmpty()) return error;
     auto* audioDevice = devices.getCurrentAudioDevice();
     virtualMicStatus = virtualMicrophone->start(
-        sampleRate, pluginChannelCount,
+        sampleRate, inputChannelCount,
         audioDevice != nullptr ? audioDevice->getCurrentBufferSizeSamples() : 256);
     player.setProcessor(graph.get());
     devices.addAudioCallback(&player);
+    if (!rebuildConnections()) {
+        devices.removeAudioCallback(&player);
+        player.setProcessor(nullptr);
+        virtualMicrophone->stop();
+        devices.closeAudioDevice();
+        return "The mono input could not be connected to the stereo processing graph.";
+    }
     return {};
 }
 
@@ -92,10 +132,36 @@ bool PluginChainEngine::addPlugin(const juce::PluginDescription& description, ju
 {
     auto instance = formats.createPluginInstance(description, sampleRate, 256, error);
     if (!instance) return false;
-    instance->setPlayConfigDetails(pluginChannelCount, pluginChannelCount, sampleRate, 256);
+    const auto layout = configurePluginLayout(*instance);
+    if (!layout) {
+        error = "The plug-in supports neither mono nor stereo audio processing.";
+        return false;
+    }
     if (auto node = graph->addNode(std::move(instance))) {
-        chain.add({description, node, false});
-        rebuildConnections();
+        juce::AudioProcessorGraph::Node::Ptr inputAdapter;
+        juce::AudioProcessorGraph::Node::Ptr outputAdapter;
+        if (layout.inputs == 1) {
+            inputAdapter = graph->addNode(
+                std::make_unique<ChannelAdapterProcessor>(
+                    ChannelAdapterProcessor::Direction::stereoToMono));
+        }
+        if (layout.outputs == 1) {
+            outputAdapter = graph->addNode(
+                std::make_unique<ChannelAdapterProcessor>(
+                    ChannelAdapterProcessor::Direction::monoToStereo));
+        }
+        chain.add({description, node, inputAdapter, outputAdapter,
+                   layout.inputs, layout.outputs, false});
+        if (!rebuildConnections()) {
+            const auto added = chain.getLast();
+            chain.removeLast();
+            if (added.inputAdapter != nullptr) graph->removeNode(added.inputAdapter->nodeID);
+            if (added.outputAdapter != nullptr) graph->removeNode(added.outputAdapter->nodeID);
+            graph->removeNode(added.node->nodeID);
+            rebuildConnections();
+            error = "The plug-in's audio channels could not be connected.";
+            return false;
+        }
         return true;
     }
     error = "The plug-in could not be added to the audio graph.";
@@ -105,8 +171,12 @@ bool PluginChainEngine::addPlugin(const juce::PluginDescription& description, ju
 void PluginChainEngine::removePlugin(int index)
 {
     if (!juce::isPositiveAndBelow(index, chain.size())) return;
-    const auto id = chain.getReference(index).node->nodeID;
-    chain.remove(index); graph->removeNode(id); rebuildConnections();
+    const auto item = chain.getReference(index);
+    chain.remove(index);
+    if (item.inputAdapter != nullptr) graph->removeNode(item.inputAdapter->nodeID);
+    if (item.outputAdapter != nullptr) graph->removeNode(item.outputAdapter->nodeID);
+    graph->removeNode(item.node->nodeID);
+    rebuildConnections();
 }
 
 void PluginChainEngine::movePlugin(int from, int to)
@@ -118,7 +188,9 @@ void PluginChainEngine::movePlugin(int from, int to)
 void PluginChainEngine::setBypassed(int index, bool bypassed)
 {
     if (!juce::isPositiveAndBelow(index, chain.size())) return;
-    auto& item = chain.getReference(index); item.bypassed = bypassed; item.node->setBypassed(bypassed);
+    auto& item = chain.getReference(index);
+    item.bypassed = bypassed;
+    rebuildConnections();
 }
 
 bool PluginChainEngine::isBypassed(int index) const
@@ -178,6 +250,18 @@ juce::AudioPluginInstance* PluginChainEngine::pluginAt(int index) const
     return dynamic_cast<juce::AudioPluginInstance*>(chain.getReference(index).node->getProcessor());
 }
 
+int PluginChainEngine::pluginInputChannelCountAt(int index) const
+{
+    return juce::isPositiveAndBelow(index, chain.size())
+        ? chain.getReference(index).inputChannelCount : 0;
+}
+
+int PluginChainEngine::pluginOutputChannelCountAt(int index) const
+{
+    return juce::isPositiveAndBelow(index, chain.size())
+        ? chain.getReference(index).outputChannelCount : 0;
+}
+
 int PluginChainEngine::pluginCount() const noexcept { return chain.size(); }
 
 ChainState PluginChainEngine::captureState() const
@@ -212,19 +296,45 @@ bool PluginChainEngine::restoreState(const ChainState& state, juce::String& erro
     return true;
 }
 
-void PluginChainEngine::rebuildConnections()
+bool PluginChainEngine::rebuildConnections()
 {
     for (const auto& connection : graph->getConnections())
         graph->removeConnection(connection);
-    auto previous = inputNode->nodeID;
+
+    bool connected = graph->addConnection(
+        {{inputNode->nodeID, 0}, {inputUpmixNode->nodeID, 0}});
+    auto previous = inputUpmixNode->nodeID;
     for (auto& item : chain) {
-        graph->addConnection({{previous, 0}, {item.node->nodeID, 0}});
-        previous = item.node->nodeID;
+        if (item.bypassed) continue;
+
+        if (item.inputChannelCount == 2) {
+            for (int channel = 0; channel < processingChannelCount; ++channel)
+                connected = graph->addConnection(
+                    {{previous, channel}, {item.node->nodeID, channel}}) && connected;
+        }
+        else {
+            for (int channel = 0; channel < processingChannelCount; ++channel)
+                connected = graph->addConnection(
+                    {{previous, channel}, {item.inputAdapter->nodeID, channel}}) && connected;
+            connected = graph->addConnection(
+                {{item.inputAdapter->nodeID, 0}, {item.node->nodeID, 0}}) && connected;
+        }
+
+        if (item.outputChannelCount == 2) {
+            previous = item.node->nodeID;
+        }
+        else {
+            connected = graph->addConnection(
+                {{item.node->nodeID, 0}, {item.outputAdapter->nodeID, 0}}) && connected;
+            previous = item.outputAdapter->nodeID;
+        }
     }
     if (monitoringEnabled) {
         for (int channel = 0; channel < outputChannelCount; ++channel)
-            graph->addConnection({{previous, 0}, {outputNode->nodeID, channel}});
+            connected = graph->addConnection(
+                {{previous, channel}, {outputNode->nodeID, channel}}) && connected;
     }
-    graph->addConnection({{previous, 0}, {virtualMicNode->nodeID, 0}});
+    connected = graph->addConnection({{previous, 0}, {virtualMicNode->nodeID, 0}}) && connected;
+    return connected;
 }
 }

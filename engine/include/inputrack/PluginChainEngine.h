@@ -9,7 +9,7 @@ public:
     static constexpr double sampleRate = 48000.0;
     static constexpr int inputChannelCount = 1;
     static constexpr int outputChannelCount = 2;
-    static constexpr int pluginChannelCount = 1;
+    static constexpr int processingChannelCount = 2;
     PluginChainEngine();
     ~PluginChainEngine();
     juce::AudioDeviceManager& deviceManager() noexcept;
@@ -33,6 +33,8 @@ public:
     /** True when the name matches a known virtual audio cable. */
     static bool looksLikeVirtualCable(const juce::String& deviceName);
     juce::AudioPluginInstance* pluginAt(int) const;
+    int pluginInputChannelCountAt(int) const;
+    int pluginOutputChannelCountAt(int) const;
     int pluginCount() const noexcept;
     ChainState captureState() const;
     bool restoreState(const ChainState&, juce::String& error);
@@ -41,9 +43,13 @@ private:
     struct HostedPlugin {
         juce::PluginDescription description;
         juce::AudioProcessorGraph::Node::Ptr node;
+        juce::AudioProcessorGraph::Node::Ptr inputAdapter;
+        juce::AudioProcessorGraph::Node::Ptr outputAdapter;
+        int inputChannelCount{};
+        int outputChannelCount{};
         bool bypassed{};
     };
-    void rebuildConnections();
+    bool rebuildConnections();
     juce::AudioDeviceManager devices;
     juce::AudioProcessorPlayer player;
     juce::AudioPluginFormatManager formats;
@@ -51,7 +57,7 @@ private:
     std::unique_ptr<VirtualMicrophone> virtualMicrophone;
     juce::String virtualMicStatus;
     std::unique_ptr<juce::AudioProcessorGraph> graph;
-    juce::AudioProcessorGraph::Node::Ptr inputNode, outputNode, virtualMicNode;
+    juce::AudioProcessorGraph::Node::Ptr inputNode, inputUpmixNode, outputNode, virtualMicNode;
     juce::Array<HostedPlugin> chain;
     bool monitoringEnabled{};
 };

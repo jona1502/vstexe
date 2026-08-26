@@ -16,6 +16,10 @@ add_executable(output_routing_tests OutputRoutingTests.cpp)
 target_link_libraries(output_routing_tests PRIVATE inputrack_engine)
 add_test(NAME output_routing_tests COMMAND output_routing_tests)
 
+add_executable(stereo_routing_tests StereoRoutingTests.cpp)
+target_link_libraries(stereo_routing_tests PRIVATE inputrack_engine)
+add_test(NAME stereo_routing_tests COMMAND stereo_routing_tests)
+
 add_executable(update_checker_tests UpdateCheckerTests.cpp)
 target_link_libraries(update_checker_tests PRIVATE inputrack_update)
 add_test(NAME update_checker_tests COMMAND update_checker_tests)

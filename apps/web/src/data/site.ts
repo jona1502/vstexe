@@ -33,7 +33,7 @@ export const nav = [
 export const facts = [
   { icon: 'vst3', title: '64-bit VST3 hosting', detail: 'Scan and run the plug-ins already installed on your machine.' },
   { icon: 'shield', title: 'Local audio processing', detail: 'Every sample stays on your machine. No account, no upload.' },
-  { icon: 'waveform', title: '48 kHz mono signal path', detail: 'One fixed rate and channel count from capture to output.' },
+  { icon: 'waveform', title: '48 kHz stereo effects', detail: 'Mono microphone input with a true stereo processing and output path.' },
   { icon: 'preset', title: 'Versioned chain presets', detail: 'Order, bypass and complete plug-in state in one JSON file.' },
   { icon: 'microphone', title: 'Native plug-in editors', detail: 'Open each plug-in in its own window, exactly as its vendor built it.' },
   { icon: 'virtual-mic', title: 'Works with any cable', detail: 'VB-CABLE, VoiceMeeter, Sonar and Wave Link are all recognised.' },
@@ -87,7 +87,7 @@ export const featureBenefits = [
 
 /** Stages of the audio path described in docs/ARCHITECTURE.md. */
 export const signalStages = [
-  { label: 'Physical microphone', meta: 'mono · 48 kHz capture', kind: 'source' },
+  { label: 'Physical microphone', meta: 'mono input · stereo effects · 48 kHz', kind: 'source' },
   { label: 'Noise suppression', meta: 'your VST3 plug-in', kind: 'effect' },
   { label: 'EQ → Compressor → De-esser', meta: 'ordered effect nodes', kind: 'effect' },
   { label: 'Virtual audio cable', meta: 'capture endpoint', kind: 'sink' },
@@ -96,7 +96,7 @@ export const signalStages = [
 export const signalPoints = [
   'The graph is rebuilt on the message thread, so reordering never interrupts capture.',
   'Bypass keeps a plug-in loaded and its state intact; only its processing is skipped.',
-  'The publisher receives already processed mono float samples and never allocates.',
+  'The cable output preserves the processed left and right channels.',
   'Local monitoring is a separate switch, so you can hear the chain without echo.',
 ] as const;
 

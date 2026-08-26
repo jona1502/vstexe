@@ -51,9 +51,13 @@ you cannot also hear it through headphones from within InputRack. Audio
 interfaces with hardware direct monitoring cover this; otherwise the chain is
 audible only to the applications reading the cable.
 
-Sample rate and channel count are fixed at 48 kHz mono through the chain. Set
-the cable's endpoints to 48 kHz in the Windows sound settings so no resampling
-is inserted between InputRack and the reading application.
+The microphone input is mono and the processing and cable output paths are
+stereo at 48 kHz. InputRack copies the dry microphone to left and right before
+the first effect, so stereo VST3 effects can create different left and right
+signals. A mono-only effect downmixes the signal at its position in the chain;
+later stereo effects can create stereo width again. Set the cable's endpoints
+to 48 kHz stereo in the Windows sound settings so no format conversion is
+inserted between InputRack and the reading application.
 
 Two applications reading the same capture endpoint simultaneously share one
 stream. A second cable pair avoids the interference if two consumers each need

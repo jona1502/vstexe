@@ -2,8 +2,8 @@
 
 InputRack is a Windows 11 and Fedora desktop application that processes a
 physical microphone through a user-defined chain of 64-bit VST3 effects and
-publishes the processed mono signal as a microphone other applications can
-use.
+publishes the processed stereo signal through an output other applications can
+use as a microphone.
 
 ## Download
 
@@ -21,7 +21,7 @@ installed on a machine with Secure Boot enabled. See
 ## MVP
 
 - Windows 11 and Fedora Linux
-- mono, 48 kHz audio path
+- mono microphone input with a stereo, 48 kHz processing and output path
 - VST3 discovery and hosting
 - add, remove, reorder, bypass and edit plug-ins
 - versioned InputRack presets including complete plug-in state

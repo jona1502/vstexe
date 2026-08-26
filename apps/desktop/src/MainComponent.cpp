@@ -363,7 +363,10 @@ void MainComponent::paintListBoxItem(int row, juce::Graphics& g, int width, int 
     g.setColour(juce::Colour(bypassed ? textMuted : text));
     g.setFont(juce::FontOptions(13.5f, juce::Font::bold));
     g.drawText(plugin->getName(), textLeft, 12, textWidth, 18, juce::Justification::centredLeft);
-    drawCaption(g, "VST3 EFFECT", {textLeft, 29, textWidth, 14}, juce::Colour(textFaint), 9.0f);
+    const auto channels = juce::String(engine.pluginInputChannelCountAt(row)) + " → "
+        + juce::String(engine.pluginOutputChannelCountAt(row));
+    drawCaption(g, channels + " VST3 EFFECT",
+                {textLeft, 29, textWidth, 14}, juce::Colour(textFaint), 9.0f);
 
     const auto pill = juce::Rectangle<float>(static_cast<float>(width - 86),
                                              static_cast<float>(height) * 0.5f - 10.0f, 62.0f, 20.0f);

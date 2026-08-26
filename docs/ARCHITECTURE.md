@@ -4,8 +4,9 @@
 
 ```text
 physical microphone (mono, 48 kHz)
+  -> mono-to-stereo adapter
   -> JUCE AudioProcessorGraph
-  -> ordered VST3 effect nodes
+  -> ordered mono or stereo VST3 effect nodes
   -> selected output device (virtual audio cable) or virtual microphone driver
   -> Discord / OBS / browser / other capture client
 ```
@@ -25,8 +26,10 @@ state is captured only when saving a preset.
 - `PluginChainEngine` owns device capture, VST3 formats and the processing graph.
 - `ChainState` is the versioned persistence model. JSON remains inspectable while
   opaque VST3 state chunks are base64 encoded without interpretation.
-- `VirtualMicrophone` is the narrow real-time publisher boundary. Platform code
-  receives already processed mono float samples.
+- Mono-only VST3 effects are surrounded by stereo-to-mono and mono-to-stereo
+  adapters. Bypassing the effect also bypasses both adapters, preserving stereo.
+- `VirtualMicrophone` is the narrow real-time publisher boundary for the legacy
+  driver route. Platform code receives the processed left channel as mono.
 - The desktop app manages microphone selection, plug-in scanning and editors.
 
 ## Real-time contract
