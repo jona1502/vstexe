@@ -24,7 +24,11 @@ installed on a machine with Secure Boot enabled. See
 - mono microphone input with a stereo, 48 kHz processing and output path
 - VST3 discovery and hosting
 - add, remove, reorder, bypass and edit plug-ins
-- versioned InputRack presets including complete plug-in state
+- input/output level meters with a clipping-protection limiter on the output
+- global bypass for the whole rack, independent of the per-plug-in flags
+- versioned InputRack presets including complete plug-in state, with crash
+  recovery of the last known-good rack after an unexpected shutdown
+- automatic recovery when the selected audio device disappears
 - publishing through any virtual audio cable
 - WDM/WaveRT virtual capture endpoint on Windows 11 (driver not release-signed)
 
