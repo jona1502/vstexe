@@ -1,5 +1,6 @@
 #pragma once
 #include <inputrack/ChainState.h>
+#include <inputrack/MeteringProcessor.h>
 #include <inputrack/VirtualMicrophone.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <optional>
@@ -23,8 +24,16 @@ public:
     void movePlugin(int from, int to);
     void setBypassed(int, bool);
     bool isBypassed(int) const;
+    /** Bypasses the whole rack at once, leaving the per-plug-in flags untouched. */
+    void setGloballyBypassed(bool);
+    bool isGloballyBypassed() const noexcept;
     void setMonitoringEnabled(bool);
     bool isMonitoringEnabled() const noexcept;
+    /** Peak sample magnitude since the last call, 0 for an unknown channel. */
+    float consumeInputPeak(int channel) noexcept;
+    float consumeOutputPeak(int channel) noexcept;
+    /** True if the output stage clamped an over-scale sample since the last call. */
+    bool consumeOutputClipped() noexcept;
     bool isVirtualMicrophoneRunning() const noexcept;
     juce::String virtualMicrophoneStatus() const;
     /** Name of the device the processed chain is written to, empty when closed. */
@@ -64,5 +73,9 @@ private:
     juce::AudioProcessorGraph::Node::Ptr inputNode, inputUpmixNode, outputNode, virtualMicNode;
     juce::Array<HostedPlugin> chain;
     bool monitoringEnabled{};
+    bool globallyBypassed{};
+    juce::AudioProcessorGraph::Node::Ptr inputMeterNode, outputMeterNode;
+    MeteringProcessor* inputMeter{};
+    MeteringProcessor* outputMeter{};
 };
 }

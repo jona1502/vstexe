@@ -37,6 +37,21 @@ juce::File pluginCacheFile()
     return pluginDataDirectory().getChildFile("known-plugins.xml");
 }
 
+juce::File recoveryStateFile()
+{
+    return pluginDataDirectory().getChildFile("recovery.inputrack.json");
+}
+
+/*
+ * Created on every launch and deleted only on a clean shutdown. Finding it
+ * already there at startup means the previous process never got that far, so
+ * the last state written to recoveryStateFile() is offered back automatically.
+ */
+juce::File crashMarkerFile()
+{
+    return pluginDataDirectory().getChildFile("session.lock");
+}
+
 juce::File pluginScannerExecutable()
 {
     auto name = juce::String("InputRackPluginScanner");
@@ -73,6 +88,21 @@ void drawStatePill(juce::Graphics& g, const juce::String& label, juce::Rectangle
     g.setColour(colour);
     g.setFont(juce::Font(juce::FontOptions(9.0f, juce::Font::bold)).withExtraKerningFactor(0.16f));
     g.drawText(label, bounds.toNearestInt(), juce::Justification::centred);
+}
+
+/** Thin fill bar used by the input/output level meters. */
+void drawLevelBar(juce::Graphics& g, juce::Rectangle<float> bounds, float level, bool clipped)
+{
+    g.setColour(juce::Colour(surfaceRaised));
+    g.fillRoundedRectangle(bounds, bounds.getHeight() * 0.5f);
+    const auto fraction = juce::jlimit(0.0f, 1.0f, level);
+    if (fraction > 0.0f) {
+        auto fill = bounds.withWidth(bounds.getWidth() * fraction);
+        g.setColour(juce::Colour(clipped ? 0xffe0505a : accent));
+        g.fillRoundedRectangle(fill, bounds.getHeight() * 0.5f);
+    }
+    g.setColour(juce::Colour(border));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), bounds.getHeight() * 0.5f, 1.0f);
 }
 
 class PluginEditorWindow final : public juce::DocumentWindow {
@@ -189,12 +219,12 @@ MainComponent::MainComponent()
     setLookAndFeel(&lookAndFeel);
     for (auto* component : std::initializer_list<juce::Component*>{
              &devices, &availablePlugins, &pluginSort, &pluginSearch, &chainList, &scan, &remove,
-             &up, &down, &bypass, &open, &monitor, &save, &load, &checkUpdates,
+             &up, &down, &bypass, &open, &monitor, &globalBypass, &save, &load, &checkUpdates,
              &installUpdate})
         addAndMakeVisible(component);
 
     for (auto* button : std::initializer_list<juce::Button*>{
-             &scan, &remove, &up, &down, &bypass, &open, &monitor, &save, &load,
+             &scan, &remove, &up, &down, &bypass, &open, &monitor, &globalBypass, &save, &load,
              &checkUpdates, &installUpdate})
         button->addListener(this);
 
@@ -207,6 +237,10 @@ MainComponent::MainComponent()
     open.setComponentID("primary");
     monitor.setClickingTogglesState(true);
     monitor.setToggleState(engine.isMonitoringEnabled(), juce::dontSendNotification);
+    globalBypass.setClickingTogglesState(true);
+    globalBypass.setToggleState(engine.isGloballyBypassed(), juce::dontSendNotification);
+    globalBypass.setComponentID("secondary");
+    engine.deviceManager().addChangeListener(this);
     chainList.setRowHeight(56);
     chainList.setOutlineThickness(0);
     chainList.getViewport()->setScrollBarsShown(true, false);
@@ -242,6 +276,9 @@ MainComponent::MainComponent()
     const auto error = engine.initialiseAudio();
     if (error.isNotEmpty()) status.setText("Audio: " + error, juce::dontSendNotification);
     else status.setText(routingStatus(), juce::dontSendNotification);
+    recoverFromUncleanShutdown();
+    pluginDataDirectory().createDirectory();
+    crashMarkerFile().create();
     startTimerHz(10);
     if (updates.isDueForAutomaticCheck()) startUpdateCheck(false);
     setSize(1180, 780);
@@ -249,12 +286,15 @@ MainComponent::MainComponent()
 
 MainComponent::~MainComponent()
 {
+    engine.deviceManager().removeChangeListener(this);
     signalThreadShouldExit();
     stopThread(10000);
     stopTimer();
     setLookAndFeel(nullptr);
     editorWindow.reset();
     engine.shutdownAudio();
+    // A clean shutdown means nothing needs recovering on the next launch.
+    crashMarkerFile().deleteFile();
 }
 
 void MainComponent::paint(juce::Graphics& g)
@@ -276,6 +316,30 @@ void MainComponent::paint(juce::Graphics& g)
                 juce::Colour(textFaint));
     drawCaption(g, "EFFECT CHAIN", chainPanel.reduced(16, 0).withY(chainPanel.getY() + 15).withHeight(18),
                 juce::Colour(textFaint));
+
+    // Input/output level meters, with the output bar turning red while the
+    // safety limiter is actively clamping over-scale samples.
+    {
+        auto area = meterArea;
+        auto inRow = area.removeFromTop(13);
+        area.removeFromTop(4);
+        auto outRow = area.removeFromTop(13);
+
+        drawCaption(g, "IN", inRow.removeFromLeft(24), juce::Colour(textFaint), 9.0f);
+        drawLevelBar(g, inRow.toFloat(),
+                    juce::jmax(inputMeterDisplay[0], inputMeterDisplay[1]), false);
+
+        auto outLabelArea = outRow.removeFromLeft(24);
+        auto clipPill = outRow.removeFromRight(46);
+        outRow.removeFromRight(6);
+        drawCaption(g, "OUT", outLabelArea, juce::Colour(textFaint), 9.0f);
+        const auto clipping = clipIndicatorTicksRemaining > 0;
+        drawLevelBar(g, outRow.toFloat(),
+                    juce::jmax(outputMeterDisplay[0], outputMeterDisplay[1]), clipping);
+        drawStatePill(g, "CLIP", clipPill.toFloat(),
+                     clipping ? juce::Colour(0xffe0505a) : juce::Colour(textFaint),
+                     clipping ? 0.22f : 0.10f);
+    }
 
     // Status strip
     g.setColour(juce::Colour(border));
@@ -316,6 +380,11 @@ void MainComponent::resized()
     scan.setBounds(controlRow.removeFromLeft(112));
     controlRow.removeFromLeft(8);
     monitor.setBounds(controlRow.removeFromLeft(120));
+    controlRow.removeFromLeft(8);
+    globalBypass.setBounds(controlRow);
+
+    inputInner.removeFromTop(10);
+    meterArea = inputInner.removeFromTop(30);
 
     // Right panel: plug-in picker on the caption row, actions along the bottom.
     auto chainInner = chainPanel.reduced(16, 15);
@@ -387,6 +456,19 @@ void MainComponent::paintListBoxItem(int row, juce::Graphics& g, int width, int 
 
 void MainComponent::timerCallback()
 {
+    // Peak-hold with decay: a block's peak snaps the bar up instantly and it
+    // falls back gradually, which reads far more usefully at 10 Hz than a
+    // meter that jumps straight back to zero between polls.
+    for (int channel = 0; channel < 2; ++channel) {
+        inputMeterDisplay[channel] = juce::jmax(engine.consumeInputPeak(channel),
+                                                inputMeterDisplay[channel] * 0.7f);
+        outputMeterDisplay[channel] = juce::jmax(engine.consumeOutputPeak(channel),
+                                                 outputMeterDisplay[channel] * 0.7f);
+    }
+    if (engine.consumeOutputClipped()) clipIndicatorTicksRemaining = 10;
+    else if (clipIndicatorTicksRemaining > 0) --clipIndicatorTicksRemaining;
+    repaint(meterArea);
+
     if (isThreadRunning()) {
         juce::String current;
         {
@@ -428,6 +510,7 @@ void MainComponent::buttonClicked(juce::Button* button)
     else if (button == &bypass && row >= 0) {
         engine.setBypassed(row, !engine.isBypassed(row));
         chainList.repaintRow(row);
+        persistRecoveryState();
     }
     else if (button == &open) openSelectedPlugin();
     else if (button == &monitor) {
@@ -436,6 +519,14 @@ void MainComponent::buttonClicked(juce::Button* button)
         monitor.setButtonText(enabled ? "Monitor on" : "Monitor off");
         monitor.setComponentID(enabled ? "primary" : "secondary");
         monitor.repaint();
+        status.setText(routingStatus(), juce::dontSendNotification);
+    }
+    else if (button == &globalBypass) {
+        const auto bypassed = globalBypass.getToggleState();
+        engine.setGloballyBypassed(bypassed);
+        globalBypass.setButtonText(bypassed ? "Bypassed" : "Bypass all");
+        globalBypass.setComponentID(bypassed ? "primary" : "secondary");
+        globalBypass.repaint();
         status.setText(routingStatus(), juce::dontSendNotification);
     }
     else if (button == &checkUpdates) startUpdateCheck(true);
@@ -626,7 +717,58 @@ void MainComponent::showError(const juce::String& title, const juce::String& mes
     juce::NativeMessageBox::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, title, message);
 }
 
-void MainComponent::refresh() { chainList.updateContent(); chainList.repaint(); }
+void MainComponent::refresh()
+{
+    chainList.updateContent();
+    chainList.repaint();
+    persistRecoveryState();
+}
+
+/*
+ * Written after every rack mutation so a crash mid-session loses nothing more
+ * than the last few seconds of edits. Plain file I/O on the message thread
+ * matches savePreset(), which already does the same synchronously.
+ */
+void MainComponent::persistRecoveryState() const
+{
+    pluginDataDirectory().createDirectory();
+    recoveryStateFile().replaceWithText(engine.captureState().toJson());
+}
+
+/*
+ * crashMarkerFile() only survives to the next launch when the previous
+ * process never reached the destructor: a crash, a kill, or a power loss.
+ * Recovering silently trades a start-up surprise for never losing a rack.
+ */
+void MainComponent::recoverFromUncleanShutdown()
+{
+    if (!crashMarkerFile().existsAsFile()) return;
+    const auto recovery = recoveryStateFile();
+    if (!recovery.existsAsFile()) return;
+    try {
+        juce::String error;
+        if (engine.restoreState(inputrack::ChainState::fromJson(recovery.loadFileAsString()), error))
+            status.setText("Recovered your rack after an unexpected shutdown.",
+                           juce::dontSendNotification);
+    } catch (const std::exception&) {
+        // A damaged recovery file is not worth surfacing as an error; the
+        // session simply starts with an empty rack instead.
+    }
+}
+
+/*
+ * JUCE's AudioDeviceManager broadcasts this both for setup changes and for a
+ * device list change on backends that support hot-plug notifications (WASAPI
+ * on Windows). A null current device means the one in use just disappeared.
+ */
+void MainComponent::changeListenerCallback(juce::ChangeBroadcaster*)
+{
+    if (engine.deviceManager().getCurrentAudioDevice() != nullptr) return;
+    const auto error = engine.initialiseAudio();
+    status.setText(error.isNotEmpty() ? "Audio: " + error
+                                       : "Input device changed. " + routingStatus(),
+                   juce::dontSendNotification);
+}
 
 /*
  * Update work reports through the same status label as everything else, so a

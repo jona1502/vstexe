@@ -35,3 +35,15 @@ add_test(NAME isolated_plugin_scanner_tests COMMAND isolated_plugin_scanner_test
 add_executable(preset_restore_tests PresetRestoreTests.cpp)
 target_link_libraries(preset_restore_tests PRIVATE inputrack_engine)
 add_test(NAME preset_restore_tests COMMAND preset_restore_tests)
+
+add_executable(preset_migration_tests PresetMigrationTests.cpp)
+target_link_libraries(preset_migration_tests PRIVATE inputrack_engine)
+add_test(NAME preset_migration_tests COMMAND preset_migration_tests)
+
+add_executable(metering_processor_tests MeteringProcessorTests.cpp)
+target_link_libraries(metering_processor_tests PRIVATE inputrack_engine)
+add_test(NAME metering_processor_tests COMMAND metering_processor_tests)
+
+add_executable(global_bypass_tests GlobalBypassTests.cpp)
+target_link_libraries(global_bypass_tests PRIVATE inputrack_engine)
+add_test(NAME global_bypass_tests COMMAND global_bypass_tests)

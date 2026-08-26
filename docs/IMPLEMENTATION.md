@@ -7,10 +7,11 @@
 - VST3 scan, load, remove, reorder, bypass and native editor
 - versioned JSON presets with opaque plug-in state
 - microphone device selector
+- input/output level meters
 
-Before M1 is considered complete, build and run it on Windows 11 and add
-meters. VST3 discovery now runs one module at a time in a timeout-controlled
-helper process; failed modules are persisted in the plug-in blacklist.
+Before M1 is considered complete, build and run it on Windows 11. VST3
+discovery now runs one module at a time in a timeout-controlled helper
+process; failed modules are persisted in the plug-in blacklist.
 
 ## M3 — Windows virtual microphone
 
@@ -28,10 +29,17 @@ Discord, OBS, Teams and Chromium receive processed audio after reboot.
 ## M4 — release hardening
 
 - out-of-process scanner and persistent quarantine
-- missing-plug-in placeholders in presets
 - input/output meters, global bypass and clipping protection
-- crash recovery, device hotplug and preset migration tests
-- CI builds on Windows; signed release pipeline
+- crash recovery (session-loss recovery from the last known-good rack) and
+  device hotplug (reinitialising audio when the selected device disappears)
+- preset schema-version guards, covered by migration tests
+- CI builds on Windows
+
+Still open before M4 is complete:
+
+- missing-plug-in placeholders in presets (a preset with an unavailable
+  plug-in is currently rejected outright rather than loaded with a gap)
+- signed release pipeline
 
 ## Known build limitation
 

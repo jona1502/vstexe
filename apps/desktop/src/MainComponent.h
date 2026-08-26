@@ -24,7 +24,8 @@ class MainComponent final : public juce::Component,
                             private juce::ListBoxModel,
                             private juce::Button::Listener,
                             private juce::Timer,
-                            private juce::Thread {
+                            private juce::Thread,
+                            private juce::ChangeListener {
 public:
     MainComponent();
     ~MainComponent() override;
@@ -54,6 +55,9 @@ private:
     void saveSettings() const;
     void timerCallback() override;
     void run() override;
+    void changeListenerCallback(juce::ChangeBroadcaster*) override;
+    void persistRecoveryState() const;
+    void recoverFromUncleanShutdown();
 
     inputrack::PluginChainEngine engine;
     InputRackLookAndFeel lookAndFeel;
@@ -66,6 +70,7 @@ private:
     juce::TextButton scan{"Scan VST3"}, remove{"Remove"};
     juce::TextButton up{"Up"}, down{"Down"}, bypass{"Bypass"}, open{"Open editor"};
     juce::TextButton monitor{"Monitor off"};
+    juce::TextButton globalBypass{"Bypass all"};
     juce::TextButton save{"Save preset"}, load{"Load preset"};
     juce::TextButton checkUpdates{"Check for updates"};
     juce::TextButton installUpdate{"Install update"};
@@ -75,7 +80,10 @@ private:
     std::optional<inputrack::AvailableUpdate> availableUpdate;
 
     // Layout rectangles shared between resized() and paint().
-    juce::Rectangle<int> inputPanel, chainPanel, statusStrip, statusTextArea;
+    juce::Rectangle<int> inputPanel, chainPanel, statusStrip, statusTextArea, meterArea;
+    float inputMeterDisplay[2]{};
+    float outputMeterDisplay[2]{};
+    int clipIndicatorTicksRemaining{};
     std::atomic<float> scanProgress{};
     std::atomic<bool> scanFinished{};
     juce::CriticalSection scanStatusLock;

@@ -85,6 +85,12 @@ PluginChainEngine::PluginChainEngine()
     outputNode = graph->addNode(std::make_unique<juce::AudioProcessorGraph::AudioGraphIOProcessor>(
         juce::AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode));
     virtualMicNode = graph->addNode(std::make_unique<VirtualMicrophoneSink>(*virtualMicrophone));
+    auto inputMeterProcessor = std::make_unique<MeteringProcessor>(false);
+    inputMeter = inputMeterProcessor.get();
+    inputMeterNode = graph->addNode(std::move(inputMeterProcessor));
+    auto outputMeterProcessor = std::make_unique<MeteringProcessor>(true);
+    outputMeter = outputMeterProcessor.get();
+    outputMeterNode = graph->addNode(std::move(outputMeterProcessor));
     rebuildConnections();
 }
 
@@ -215,6 +221,30 @@ bool PluginChainEngine::isBypassed(int index) const
 {
     return juce::isPositiveAndBelow(index, chain.size())
         && chain.getReference(index).bypassed;
+}
+
+void PluginChainEngine::setGloballyBypassed(bool bypassed)
+{
+    if (globallyBypassed == bypassed) return;
+    globallyBypassed = bypassed;
+    rebuildConnections();
+}
+
+bool PluginChainEngine::isGloballyBypassed() const noexcept { return globallyBypassed; }
+
+float PluginChainEngine::consumeInputPeak(int channel) noexcept
+{
+    return inputMeter->readAndResetPeak(channel);
+}
+
+float PluginChainEngine::consumeOutputPeak(int channel) noexcept
+{
+    return outputMeter->readAndResetPeak(channel);
+}
+
+bool PluginChainEngine::consumeOutputClipped() noexcept
+{
+    return outputMeter->readAndResetClipped();
 }
 
 void PluginChainEngine::setMonitoringEnabled(bool enabled)
@@ -353,32 +383,41 @@ bool PluginChainEngine::rebuildConnections()
 
     bool connected = graph->addConnection(
         {{inputNode->nodeID, 0}, {inputUpmixNode->nodeID, 0}});
-    auto previous = inputUpmixNode->nodeID;
-    for (auto& item : chain) {
-        if (item.bypassed) continue;
+    for (int channel = 0; channel < processingChannelCount; ++channel)
+        connected = graph->addConnection(
+            {{inputUpmixNode->nodeID, channel}, {inputMeterNode->nodeID, channel}}) && connected;
+    auto previous = inputMeterNode->nodeID;
+    if (!globallyBypassed) {
+        for (auto& item : chain) {
+            if (item.bypassed) continue;
 
-        if (item.inputChannelCount == 2) {
-            for (int channel = 0; channel < processingChannelCount; ++channel)
+            if (item.inputChannelCount == 2) {
+                for (int channel = 0; channel < processingChannelCount; ++channel)
+                    connected = graph->addConnection(
+                        {{previous, channel}, {item.node->nodeID, channel}}) && connected;
+            }
+            else {
+                for (int channel = 0; channel < processingChannelCount; ++channel)
+                    connected = graph->addConnection(
+                        {{previous, channel}, {item.inputAdapter->nodeID, channel}}) && connected;
                 connected = graph->addConnection(
-                    {{previous, channel}, {item.node->nodeID, channel}}) && connected;
-        }
-        else {
-            for (int channel = 0; channel < processingChannelCount; ++channel)
-                connected = graph->addConnection(
-                    {{previous, channel}, {item.inputAdapter->nodeID, channel}}) && connected;
-            connected = graph->addConnection(
-                {{item.inputAdapter->nodeID, 0}, {item.node->nodeID, 0}}) && connected;
-        }
+                    {{item.inputAdapter->nodeID, 0}, {item.node->nodeID, 0}}) && connected;
+            }
 
-        if (item.outputChannelCount == 2) {
-            previous = item.node->nodeID;
-        }
-        else {
-            connected = graph->addConnection(
-                {{item.node->nodeID, 0}, {item.outputAdapter->nodeID, 0}}) && connected;
-            previous = item.outputAdapter->nodeID;
+            if (item.outputChannelCount == 2) {
+                previous = item.node->nodeID;
+            }
+            else {
+                connected = graph->addConnection(
+                    {{item.node->nodeID, 0}, {item.outputAdapter->nodeID, 0}}) && connected;
+                previous = item.outputAdapter->nodeID;
+            }
         }
     }
+    for (int channel = 0; channel < processingChannelCount; ++channel)
+        connected = graph->addConnection(
+            {{previous, channel}, {outputMeterNode->nodeID, channel}}) && connected;
+    previous = outputMeterNode->nodeID;
     if (monitoringEnabled) {
         for (int channel = 0; channel < outputChannelCount; ++channel)
             connected = graph->addConnection(
