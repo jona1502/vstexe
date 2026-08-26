@@ -2,6 +2,7 @@
 #include <inputrack/ChainState.h>
 #include <inputrack/VirtualMicrophone.h>
 #include <juce_audio_utils/juce_audio_utils.h>
+#include <optional>
 
 namespace inputrack {
 class PluginChainEngine final {
@@ -49,6 +50,9 @@ private:
         int outputChannelCount{};
         bool bypassed{};
     };
+    std::optional<HostedPlugin> createHostedPlugin(const juce::PluginDescription&,
+                                                   juce::String& error);
+    void removeHostedPlugin(const HostedPlugin&);
     bool rebuildConnections();
     juce::AudioDeviceManager devices;
     juce::AudioProcessorPlayer player;

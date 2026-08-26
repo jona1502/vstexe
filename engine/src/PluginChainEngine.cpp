@@ -130,12 +130,28 @@ void PluginChainEngine::shutdownAudio()
 
 bool PluginChainEngine::addPlugin(const juce::PluginDescription& description, juce::String& error)
 {
+    auto hosted = createHostedPlugin(description, error);
+    if (!hosted.has_value()) return false;
+    chain.add(std::move(*hosted));
+    if (rebuildConnections()) return true;
+
+    const auto added = chain.getLast();
+    chain.removeLast();
+    removeHostedPlugin(added);
+    rebuildConnections();
+    error = "The plug-in's audio channels could not be connected.";
+    return false;
+}
+
+std::optional<PluginChainEngine::HostedPlugin> PluginChainEngine::createHostedPlugin(
+    const juce::PluginDescription& description, juce::String& error)
+{
     auto instance = formats.createPluginInstance(description, sampleRate, 256, error);
-    if (!instance) return false;
+    if (!instance) return std::nullopt;
     const auto layout = configurePluginLayout(*instance);
     if (!layout) {
         error = "The plug-in supports neither mono nor stereo audio processing.";
-        return false;
+        return std::nullopt;
     }
     if (auto node = graph->addNode(std::move(instance))) {
         juce::AudioProcessorGraph::Node::Ptr inputAdapter;
@@ -150,22 +166,26 @@ bool PluginChainEngine::addPlugin(const juce::PluginDescription& description, ju
                 std::make_unique<ChannelAdapterProcessor>(
                     ChannelAdapterProcessor::Direction::monoToStereo));
         }
-        chain.add({description, node, inputAdapter, outputAdapter,
-                   layout.inputs, layout.outputs, false});
-        if (!rebuildConnections()) {
-            const auto added = chain.getLast();
-            chain.removeLast();
-            if (added.inputAdapter != nullptr) graph->removeNode(added.inputAdapter->nodeID);
-            if (added.outputAdapter != nullptr) graph->removeNode(added.outputAdapter->nodeID);
-            graph->removeNode(added.node->nodeID);
-            rebuildConnections();
-            error = "The plug-in's audio channels could not be connected.";
-            return false;
+        if ((layout.inputs == 1 && inputAdapter == nullptr)
+            || (layout.outputs == 1 && outputAdapter == nullptr)) {
+            if (inputAdapter != nullptr) graph->removeNode(inputAdapter->nodeID);
+            if (outputAdapter != nullptr) graph->removeNode(outputAdapter->nodeID);
+            graph->removeNode(node->nodeID);
+            error = "The plug-in's channel adapters could not be created.";
+            return std::nullopt;
         }
-        return true;
+        return HostedPlugin{description, node, inputAdapter, outputAdapter,
+                            layout.inputs, layout.outputs, false};
     }
     error = "The plug-in could not be added to the audio graph.";
-    return false;
+    return std::nullopt;
+}
+
+void PluginChainEngine::removeHostedPlugin(const HostedPlugin& item)
+{
+    if (item.inputAdapter != nullptr) graph->removeNode(item.inputAdapter->nodeID);
+    if (item.outputAdapter != nullptr) graph->removeNode(item.outputAdapter->nodeID);
+    if (item.node != nullptr) graph->removeNode(item.node->nodeID);
 }
 
 void PluginChainEngine::removePlugin(int index)
@@ -173,9 +193,7 @@ void PluginChainEngine::removePlugin(int index)
     if (!juce::isPositiveAndBelow(index, chain.size())) return;
     const auto item = chain.getReference(index);
     chain.remove(index);
-    if (item.inputAdapter != nullptr) graph->removeNode(item.inputAdapter->nodeID);
-    if (item.outputAdapter != nullptr) graph->removeNode(item.outputAdapter->nodeID);
-    graph->removeNode(item.node->nodeID);
+    removeHostedPlugin(item);
     rebuildConnections();
 }
 
@@ -278,7 +296,8 @@ ChainState PluginChainEngine::captureState() const
 
 bool PluginChainEngine::restoreState(const ChainState& state, juce::String& error)
 {
-    while (!chain.isEmpty()) removePlugin(chain.size() - 1);
+    juce::Array<HostedPlugin> candidate;
+    juce::StringArray failures;
     for (int i = 0; i < state.size(); ++i) {
         const auto item = state.pluginAt(i);
         juce::PluginDescription description;
@@ -288,11 +307,42 @@ bool PluginChainEngine::restoreState(const ChainState& state, juce::String& erro
         description.uniqueId = static_cast<int>(item.getProperty("uniqueId"));
         description.deprecatedUid = static_cast<int>(item.getProperty("deprecatedUid"));
         description.pluginFormatName = item.getProperty("format").toString();
-        if (!addPlugin(description, error)) return false;
+        juce::String pluginError;
+        auto hosted = createHostedPlugin(description, pluginError);
+        if (!hosted.has_value()) {
+            failures.add(description.name + ": "
+                         + (pluginError.isNotEmpty() ? pluginError : "could not be loaded"));
+            continue;
+        }
         const auto data = state.pluginState(i);
-        pluginAt(i)->setStateInformation(data.getData(), static_cast<int>(data.getSize()));
-        setBypassed(i, state.isBypassed(i));
+        if (!data.isEmpty())
+            hosted->node->getProcessor()->setStateInformation(
+                data.getData(), static_cast<int>(data.getSize()));
+        hosted->bypassed = state.isBypassed(i);
+        candidate.add(std::move(*hosted));
     }
+
+    if (!failures.isEmpty()) {
+        for (const auto& item : candidate) removeHostedPlugin(item);
+        error = "The preset was not loaded. The current rack is unchanged:\n- "
+            + failures.joinIntoString("\n- ");
+        return false;
+    }
+
+    // Keep every old node alive until the complete candidate chain has proved
+    // that it can be connected. This makes restoration an atomic user action:
+    // either the new rack works, or the old rack is reconnected unchanged.
+    auto previous = std::move(chain);
+    chain = std::move(candidate);
+    if (!rebuildConnections()) {
+        for (const auto& item : chain) removeHostedPlugin(item);
+        chain = std::move(previous);
+        rebuildConnections();
+        error = "The preset's audio graph could not be connected. The current rack is unchanged.";
+        return false;
+    }
+
+    for (const auto& item : previous) removeHostedPlugin(item);
     return true;
 }
 

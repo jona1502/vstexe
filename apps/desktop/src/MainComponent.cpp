@@ -608,11 +608,13 @@ void MainComponent::loadPreset()
     chooser = std::make_unique<juce::FileChooser>("Load Rack", juce::File{}, "*.inputrack.json");
     chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
         [this](const juce::FileChooser& fc) {
+            const auto file = fc.getResult();
+            if (file == juce::File{}) return;
             try {
                 editorWindow.reset();
                 editorPlugin = nullptr;
                 juce::String error;
-                if (!engine.restoreState(inputrack::ChainState::fromJson(fc.getResult().loadFileAsString()), error))
+                if (!engine.restoreState(inputrack::ChainState::fromJson(file.loadFileAsString()), error))
                     showError("Could not restore preset", error);
                 refresh();
             } catch (const std::exception& e) { showError("Invalid preset", e.what()); }

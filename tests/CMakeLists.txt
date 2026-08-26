@@ -31,3 +31,7 @@ add_test(NAME plugin_browsing_tests COMMAND plugin_browsing_tests)
 add_executable(isolated_plugin_scanner_tests IsolatedPluginScannerTests.cpp)
 target_link_libraries(isolated_plugin_scanner_tests PRIVATE inputrack_scanner)
 add_test(NAME isolated_plugin_scanner_tests COMMAND isolated_plugin_scanner_tests)
+
+add_executable(preset_restore_tests PresetRestoreTests.cpp)
+target_link_libraries(preset_restore_tests PRIVATE inputrack_engine)
+add_test(NAME preset_restore_tests COMMAND preset_restore_tests)

@@ -1,11 +1,21 @@
 #include <inputrack/ChainState.h>
 #include <iostream>
+#include <stdexcept>
 
 namespace {
 int failures = 0;
 void expect(bool condition, const char* message)
 {
     if (!condition) { std::cerr << "FAIL: " << message << '\n'; ++failures; }
+}
+
+void expectInvalid(const juce::String& json, const char* message)
+{
+    try {
+        inputrack::ChainState::fromJson(json);
+        expect(false, message);
+    } catch (const std::invalid_argument&) {
+    }
 }
 }
 
@@ -30,5 +40,14 @@ int main()
     expect(restored.pluginAt(0).getProperty("name") == "Test Compressor", "plug-in identity round-trips");
     expect(restored.isBypassed(0), "bypass state round-trips");
     expect(restored.pluginState(0) == pluginState, "binary plug-in state round-trips");
+
+    expectInvalid(R"({"_type":"inputRack","properties":{},"children":[]})",
+                  "a missing schema version is rejected");
+    expectInvalid(
+        R"({"_type":"inputRack","properties":{"schemaVersion":1},"children":[{"_type":"plugin","properties":{"name":"Broken","format":"VST3","fileOrIdentifier":"broken","state":"%%%"},"children":[]}]})",
+        "invalid base64 plug-in state is rejected");
+    expectInvalid(
+        R"({"_type":"inputRack","properties":{"schemaVersion":1},"children":[{"_type":"plugin","properties":{"name":"Broken","format":"VST3","state":""},"children":[]}]})",
+        "an incomplete plug-in identity is rejected");
     return failures == 0 ? 0 : 1;
 }

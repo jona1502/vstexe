@@ -19,8 +19,24 @@ ChainState::ChainState(juce::ValueTree state) : root(std::move(state))
 {
     if (!root.isValid() || !root.hasType(chainType))
         throw std::invalid_argument("Invalid InputRack preset root");
-    if (static_cast<int>(root.getProperty(schemaKey, 0)) > currentSchemaVersion)
+    if (!root.hasProperty(schemaKey)
+        || static_cast<int>(root.getProperty(schemaKey, 0)) < 1)
+        throw std::invalid_argument("Preset has no valid schema version");
+    if (static_cast<int>(root.getProperty(schemaKey)) > currentSchemaVersion)
         throw std::invalid_argument("Preset was created by a newer InputRack version");
+
+    for (int i = 0; i < root.getNumChildren(); ++i) {
+        const auto plugin = root.getChild(i);
+        if (!plugin.hasType(pluginType))
+            throw std::invalid_argument("Preset contains an invalid rack entry");
+        if (plugin.getProperty("name").toString().isEmpty()
+            || plugin.getProperty("fileOrIdentifier").toString().isEmpty()
+            || plugin.getProperty("format").toString().isEmpty())
+            throw std::invalid_argument("Preset contains an incomplete plug-in entry");
+        juce::MemoryBlock decoded;
+        if (!decoded.fromBase64Encoding(plugin.getProperty(stateKey).toString()))
+            throw std::invalid_argument("Preset contains invalid plug-in state data");
+    }
 }
 
 const juce::ValueTree& ChainState::valueTree() const noexcept { return root; }
@@ -77,8 +93,9 @@ void ChainState::setPluginState(int index, const juce::MemoryBlock& state)
 juce::MemoryBlock ChainState::pluginState(int index) const
 {
     juce::MemoryBlock result;
-    if (auto plugin = pluginAt(index); plugin.isValid())
-        result.fromBase64Encoding(plugin.getProperty(stateKey).toString());
+    if (auto plugin = pluginAt(index); plugin.isValid()
+        && !result.fromBase64Encoding(plugin.getProperty(stateKey).toString()))
+        throw std::invalid_argument("Invalid plug-in state data");
     return result;
 }
 
