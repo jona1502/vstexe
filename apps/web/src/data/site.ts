@@ -23,7 +23,6 @@ export const site = {
 export const nav = [
   { label: 'Features', href: '#features' },
   { label: 'Signal path', href: '#signal-path' },
-  { label: 'Presets', href: '#presets' },
   { label: 'Open source', href: site.repo, external: true },
 ] as const;
 
@@ -101,37 +100,12 @@ export const signalPoints = [
   'Local monitoring is a separate switch, so you can hear the chain without echo.',
 ] as const;
 
-export const presetPoints = [
-  {
-    title: 'The complete plug-in state travels with the preset',
-    detail:
-      'Each entry stores the opaque VST3 state chunk base64 encoded, so a restored chain sounds exactly like the one you saved.',
-  },
-  {
-    title: 'Order and bypass are part of the file',
-    detail: 'Children are written in processing order and every entry carries its own bypassed flag.',
-  },
-  {
-    title: 'Versioned and inspectable',
-    detail:
-      'A schemaVersion guards the format and a preset from a newer InputRack is rejected instead of silently misread.',
-  },
-] as const;
-
-/** Build commands from README.md, mirrored here so the page cannot drift silently. */
-export const buildCommands = [
-  { prompt: '$', command: 'git clone https://github.com/jona1502/vstexe' },
-  { prompt: '$', command: 'cmake --preset windows-release' },
-  { prompt: '$', command: 'cmake --build --preset windows-release' },
-] as const;
-
 export const footerLinks = [
   {
     heading: 'Product',
     links: [
       { label: 'Features', href: '#features' },
       { label: 'Signal path', href: '#signal-path' },
-      { label: 'Presets', href: '#presets' },
       { label: 'Download', href: '#download' },
     ],
   },
