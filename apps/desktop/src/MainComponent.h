@@ -1,14 +1,14 @@
 #pragma once
-#include <vocalchain/PluginBrowsing.h>
-#include <vocalchain/PluginChainEngine.h>
-#include <vocalchain/UpdateChecker.h>
+#include <inputrack/PluginBrowsing.h>
+#include <inputrack/PluginChainEngine.h>
+#include <inputrack/UpdateChecker.h>
 #include <optional>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <atomic>
 
-class VocalChainLookAndFeel final : public juce::LookAndFeel_V4 {
+class InputRackLookAndFeel final : public juce::LookAndFeel_V4 {
 public:
-    VocalChainLookAndFeel();
+    InputRackLookAndFeel();
 
     void drawButtonBackground(juce::Graphics&, juce::Button&, const juce::Colour&,
                               bool isHighlighted, bool isDown) override;
@@ -44,7 +44,7 @@ private:
     void refresh();
     juce::String routingStatus() const;
     void startUpdateCheck(bool requestedByUser);
-    void updateCheckFinished(std::optional<vocalchain::AvailableUpdate>, const juce::String& error);
+    void updateCheckFinished(std::optional<inputrack::AvailableUpdate>, const juce::String& error);
     void startUpdateDownload();
     void refreshAvailablePlugins();
     void loadPluginCache();
@@ -55,14 +55,14 @@ private:
     void timerCallback() override;
     void run() override;
 
-    vocalchain::PluginChainEngine engine;
-    VocalChainLookAndFeel lookAndFeel;
+    inputrack::PluginChainEngine engine;
+    InputRackLookAndFeel lookAndFeel;
     juce::AudioDeviceSelectorComponent devices;
     juce::ComboBox availablePlugins, pluginSort;
     juce::TextEditor pluginSearch;
     /** The picker contents in display order; ids index into this, not the scan. */
     juce::Array<juce::PluginDescription> visiblePlugins;
-    juce::ListBox chainList{"Vocal Chain", this};
+    juce::ListBox chainList{"Effect Rack", this};
     juce::TextButton scan{"Scan VST3"}, remove{"Remove"};
     juce::TextButton up{"Up"}, down{"Down"}, bypass{"Bypass"}, open{"Open editor"};
     juce::TextButton monitor{"Monitor off"};
@@ -71,8 +71,8 @@ private:
     juce::TextButton installUpdate{"Install update"};
     juce::Label status;
 
-    vocalchain::UpdateChecker updates;
-    std::optional<vocalchain::AvailableUpdate> availableUpdate;
+    inputrack::UpdateChecker updates;
+    std::optional<inputrack::AvailableUpdate> availableUpdate;
 
     // Layout rectangles shared between resized() and paint().
     juce::Rectangle<int> inputPanel, chainPanel, statusStrip, statusTextArea;

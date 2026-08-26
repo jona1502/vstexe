@@ -8,11 +8,11 @@ The initial Windows driver base is vendored from Microsoft's
 - Imported subtree: `audio/sysvad`
 - License: Microsoft Public License (`sysvad/LICENSE.MS-PL`)
 
-The unmodified import is intentionally isolated under `sysvad/`. VocalChain
+The unmodified import is intentionally isolated under `sysvad/`. InputRack
 changes must retain Microsoft's notices and should be kept as reviewable commits.
 Before updating the import, compare the WDK version, INF model, PortCls changes,
 and all security-relevant diffs against the pinned commit.
 
 The first downstream reduction will remove unrelated render, Bluetooth, USB,
 HDMI, keyword, and APO endpoints. The target package exposes only one root-
-enumerated mono capture endpoint named `VocalChain Microphone`.
+enumerated mono capture endpoint named `InputRack Microphone`.

@@ -1,25 +1,25 @@
-add_executable(vocalchain_tests ChainStateTests.cpp)
-target_link_libraries(vocalchain_tests PRIVATE vocalchain_engine)
-add_test(NAME vocalchain_tests COMMAND vocalchain_tests)
+add_executable(inputrack_tests ChainStateTests.cpp)
+target_link_libraries(inputrack_tests PRIVATE inputrack_engine)
+add_test(NAME inputrack_tests COMMAND inputrack_tests)
 
 add_executable(virtualmic_protocol_tests VirtualMicProtocolTests.cpp)
-target_link_libraries(virtualmic_protocol_tests PRIVATE vocalchain_platform)
+target_link_libraries(virtualmic_protocol_tests PRIVATE inputrack_platform)
 add_test(NAME virtualmic_protocol_tests COMMAND virtualmic_protocol_tests)
 
 add_executable(pcm_ring_buffer_tests PcmRingBufferTests.cpp)
 target_include_directories(pcm_ring_buffer_tests PRIVATE
-    "${PROJECT_SOURCE_DIR}/driver/windows/vocalchain")
-target_link_libraries(pcm_ring_buffer_tests PRIVATE vocalchain_platform)
+    "${PROJECT_SOURCE_DIR}/driver/windows/inputrack")
+target_link_libraries(pcm_ring_buffer_tests PRIVATE inputrack_platform)
 add_test(NAME pcm_ring_buffer_tests COMMAND pcm_ring_buffer_tests)
 
 add_executable(output_routing_tests OutputRoutingTests.cpp)
-target_link_libraries(output_routing_tests PRIVATE vocalchain_engine)
+target_link_libraries(output_routing_tests PRIVATE inputrack_engine)
 add_test(NAME output_routing_tests COMMAND output_routing_tests)
 
 add_executable(update_checker_tests UpdateCheckerTests.cpp)
-target_link_libraries(update_checker_tests PRIVATE vocalchain_update)
+target_link_libraries(update_checker_tests PRIVATE inputrack_update)
 add_test(NAME update_checker_tests COMMAND update_checker_tests)
 
 add_executable(plugin_browsing_tests PluginBrowsingTests.cpp)
-target_link_libraries(plugin_browsing_tests PRIVATE vocalchain_engine)
+target_link_libraries(plugin_browsing_tests PRIVATE inputrack_engine)
 add_test(NAME plugin_browsing_tests COMMAND plugin_browsing_tests)

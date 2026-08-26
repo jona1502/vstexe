@@ -6,7 +6,7 @@
 #include "minwavertstream.h"
 #include "UnittestData.h"
 #include "AudioModuleHelper.h"
-#include "../../vocalchain/VirtualMicTransport.h"
+#include "../../inputrack/VirtualMicTransport.h"
 #define MINWAVERTSTREAM_POOLTAG 'SRWM'
 
 #pragma warning (disable : 4127)
@@ -1503,7 +1503,7 @@ VOID CMiniportWaveRTStream::WriteBytes
 
 Routine Description:
 
-This function writes processed VocalChain PCM into the capture buffer.
+This function writes processed InputRack PCM into the capture buffer.
 Arguments:
 
 ByteDisplacement - # of bytes to process.
@@ -1518,7 +1518,7 @@ ByteDisplacement - # of bytes to process.
     {
         ULONG runWrite = min(ByteDisplacement, m_ulDmaBufferSize - bufferOffset);
         ULONG frameCount = runWrite / sizeof(SHORT);
-        VocalChainVirtualMicRead(
+        InputRackVirtualMicRead(
             reinterpret_cast<SHORT*>(m_pDmaBuffer + bufferOffset),
             frameCount);
         if ((runWrite % sizeof(SHORT)) != 0)

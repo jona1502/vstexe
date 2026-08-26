@@ -1,4 +1,4 @@
-# Releasing VocalChain
+# Releasing InputRack
 
 ## Windows installer
 
@@ -15,7 +15,7 @@ git push origin v0.1.0
 ```
 
 Tags must follow `vMAJOR.MINOR.PATCH`. The corresponding installer is named
-`VocalChain-MAJOR.MINOR.PATCH-Windows-x64-Setup.exe`.
+`InputRack-MAJOR.MINOR.PATCH-Windows-x64-Setup.exe`.
 
 For a local package build, first build the release preset and then run:
 
@@ -31,7 +31,7 @@ ctest --preset windows-release
 The application checks for newer releases itself, so a tagged release reaches an
 installed copy without a manual download. `UpdateChecker` (`update/`) queries the
 public releases API at most once a day, records the timestamp in
-`%APPDATA%\VocalChain\update-check.json`, and offers an install button in the
+`%APPDATA%\InputRack\update-check.json`, and offers an install button in the
 status strip. A second button there starts the check on demand.
 
 This constrains what a release may look like:
@@ -47,7 +47,7 @@ This constrains what a release may look like:
 
 The installer is fetched, checked against the published SHA-256 and only then
 executed with `/SILENT /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS`. `AppMutex` in
-`VocalChain.iss` lets the restart manager close the running application before
+`InputRack.iss` lets the restart manager close the running application before
 the executable is replaced, and the install location under `{localappdata}`
 means no elevation prompt appears.
 

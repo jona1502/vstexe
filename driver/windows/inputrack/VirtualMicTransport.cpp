@@ -2,11 +2,11 @@
 #include "VirtualMicTransport.h"
 #include "PcmRingBuffer.h"
 
-namespace protocol = vocalchain::virtualmic;
+namespace protocol = inputrack::virtualmic;
 
 namespace {
 KSPIN_LOCK transportLock;
-vocalchain::driver::PcmRingBuffer ring;
+inputrack::driver::PcmRingBuffer ring;
 SHORT ringStorage[protocol::ringCapacityFrames];
 ULONGLONG acceptedPackets = 0;
 ULONGLONG rejectedPackets = 0;
@@ -66,7 +66,7 @@ NTSTATUS getStatus(PPCPROPERTY_REQUEST request)
 }
 } // namespace
 
-NTSTATUS VocalChainVirtualMicInitialize()
+NTSTATUS InputRackVirtualMicInitialize()
 {
     KeInitializeSpinLock(&transportLock);
     ring.initialize(ringStorage, protocol::ringCapacityFrames);
@@ -77,9 +77,9 @@ NTSTATUS VocalChainVirtualMicInitialize()
     return STATUS_SUCCESS;
 }
 
-void VocalChainVirtualMicShutdown() { initialized = FALSE; }
+void InputRackVirtualMicShutdown() { initialized = FALSE; }
 
-void VocalChainVirtualMicRead(SHORT* output, ULONG frameCount)
+void InputRackVirtualMicRead(SHORT* output, ULONG frameCount)
 {
     if (output == nullptr || frameCount == 0)
         return;
@@ -93,7 +93,7 @@ void VocalChainVirtualMicRead(SHORT* output, ULONG frameCount)
     KeReleaseSpinLock(&transportLock, previousIrql);
 }
 
-NTSTATUS PropertyHandler_VocalChainVirtualMic(PPCPROPERTY_REQUEST request)
+NTSTATUS PropertyHandler_InputRackVirtualMic(PPCPROPERTY_REQUEST request)
 {
     if (request == nullptr || request->PropertyItem == nullptr)
         return STATUS_INVALID_PARAMETER;

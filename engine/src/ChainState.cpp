@@ -1,9 +1,9 @@
-#include <vocalchain/ChainState.h>
+#include <inputrack/ChainState.h>
 #include <stdexcept>
 
-namespace vocalchain {
+namespace inputrack {
 namespace {
-const juce::Identifier chainType{"vocalChain"}, pluginType{"plugin"};
+const juce::Identifier chainType{"inputRack"}, pluginType{"plugin"};
 const juce::Identifier schemaKey{"schemaVersion"}, nameKey{"name"};
 const juce::Identifier bypassedKey{"bypassed"}, stateKey{"state"};
 const juce::Identifier typeKey{"_type"}, propertiesKey{"properties"}, childrenKey{"children"};
@@ -12,15 +12,15 @@ const juce::Identifier typeKey{"_type"}, propertiesKey{"properties"}, childrenKe
 ChainState::ChainState() : root(chainType)
 {
     root.setProperty(schemaKey, currentSchemaVersion, nullptr);
-    root.setProperty(nameKey, "Untitled Vocal Chain", nullptr);
+    root.setProperty(nameKey, "Untitled Rack", nullptr);
 }
 
 ChainState::ChainState(juce::ValueTree state) : root(std::move(state))
 {
     if (!root.isValid() || !root.hasType(chainType))
-        throw std::invalid_argument("Invalid VocalChain preset root");
+        throw std::invalid_argument("Invalid InputRack preset root");
     if (static_cast<int>(root.getProperty(schemaKey, 0)) > currentSchemaVersion)
-        throw std::invalid_argument("Preset was created by a newer VocalChain version");
+        throw std::invalid_argument("Preset was created by a newer InputRack version");
 }
 
 const juce::ValueTree& ChainState::valueTree() const noexcept { return root; }

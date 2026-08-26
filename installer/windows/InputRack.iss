@@ -2,7 +2,7 @@
   #define AppVersion "0.1.0"
 #endif
 #ifndef AppBinary
-  #error AppBinary must point to the release VocalChain.exe
+  #error AppBinary must point to the release InputRack.exe
 #endif
 #ifndef OutputDirectory
   #define OutputDirectory "..\..\out\windows"
@@ -10,32 +10,32 @@
 
 [Setup]
 AppId={{B5A16131-A1B3-4886-A09E-2DA4B71F05DD}
-AppName=VocalChain
+AppName=InputRack
 AppVersion={#AppVersion}
-AppPublisher=VocalChain
+AppPublisher=InputRack
 AppPublisherURL=https://github.com/jona1502/vstexe
 AppSupportURL=https://github.com/jona1502/vstexe/issues
-DefaultDirName={localappdata}\Programs\VocalChain
-DefaultGroupName=VocalChain
+DefaultDirName={localappdata}\Programs\InputRack
+DefaultGroupName=InputRack
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 ; The running application holds this mutex, so a silent update can close it
 ; through the restart manager instead of failing to replace a locked file.
-AppMutex=VocalChainRunningInstance
+AppMutex=InputRackRunningInstance
 CloseApplications=yes
 RestartApplications=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDirectory}
-OutputBaseFilename=VocalChain-{#AppVersion}-Windows-x64-Setup
+OutputBaseFilename=InputRack-{#AppVersion}-Windows-x64-Setup
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
-UninstallDisplayIcon={app}\VocalChain.exe
+UninstallDisplayIcon={app}\InputRack.exe
 VersionInfoVersion={#AppVersion}.0
-VersionInfoCompany=VocalChain
-VersionInfoDescription=VocalChain Windows Installer
-VersionInfoProductName=VocalChain
+VersionInfoCompany=InputRack
+VersionInfoDescription=InputRack Windows Installer
+VersionInfoProductName=InputRack
 VersionInfoProductVersion={#AppVersion}
 
 [Languages]
@@ -45,23 +45,23 @@ Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 [CustomMessages]
 english.CableTitle=Virtual audio cable required
 english.CableSubtitle=How other applications hear your chain
-english.CableBody=VocalChain processes your microphone, but Windows only lets a driver publish a microphone device.%n%nTo use the processed signal in Discord, OBS or any other application, install a virtual audio cable such as VB-CABLE (https://vb-audio.com/Cable/). VocalChain does not include one.%n%nIn VocalChain, select the cable as the output device and enable Monitor. In the other application, select the cable's capture side as the microphone.
+english.CableBody=InputRack processes your microphone, but Windows only lets a driver publish a microphone device.%n%nTo use the processed signal in Discord, OBS or any other application, install a virtual audio cable such as VB-CABLE (https://vb-audio.com/Cable/). InputRack does not include one.%n%nIn InputRack, select the cable as the output device and enable Monitor. In the other application, select the cable's capture side as the microphone.
 german.CableTitle=Virtuelles Audiokabel erforderlich
 german.CableSubtitle=Wie andere Anwendungen deine Kette hören
-german.CableBody=VocalChain bearbeitet dein Mikrofon, aber unter Windows kann nur ein Treiber ein Mikrofongerät bereitstellen.%n%nUm das bearbeitete Signal in Discord, OBS oder einer anderen Anwendung zu nutzen, installiere ein virtuelles Audiokabel wie VB-CABLE (https://vb-audio.com/Cable/). VocalChain bringt keines mit.%n%nWähle das Kabel in VocalChain als Ausgabegerät und aktiviere Monitor. Wähle in der anderen Anwendung die Aufnahmeseite des Kabels als Mikrofon.
+german.CableBody=InputRack bearbeitet dein Mikrofon, aber unter Windows kann nur ein Treiber ein Mikrofongerät bereitstellen.%n%nUm das bearbeitete Signal in Discord, OBS oder einer anderen Anwendung zu nutzen, installiere ein virtuelles Audiokabel wie VB-CABLE (https://vb-audio.com/Cable/). InputRack bringt keines mit.%n%nWähle das Kabel in InputRack als Ausgabegerät und aktiviere Monitor. Wähle in der anderen Anwendung die Aufnahmeseite des Kabels als Mikrofon.
 
 [Files]
-Source: "{#AppBinary}"; DestDir: "{app}"; DestName: "VocalChain.exe"; Flags: ignoreversion
+Source: "{#AppBinary}"; DestDir: "{app}"; DestName: "InputRack.exe"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\VocalChain"; Filename: "{app}\VocalChain.exe"
-Name: "{autodesktop}\VocalChain"; Filename: "{app}\VocalChain.exe"; Tasks: desktopicon
+Name: "{autoprograms}\InputRack"; Filename: "{app}\InputRack.exe"
+Name: "{autodesktop}\InputRack"; Filename: "{app}\InputRack.exe"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Run]
-Filename: "{app}\VocalChain.exe"; Description: "{cm:LaunchProgram,VocalChain}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\InputRack.exe"; Description: "{cm:LaunchProgram,InputRack}"; Flags: nowait postinstall skipifsilent
 
 [Code]
 { The application alone cannot publish a microphone, so the requirement is

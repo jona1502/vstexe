@@ -7,9 +7,9 @@
 
 ## User-visible result
 
-The installed driver exposes one Windows capture endpoint named **VocalChain
+The installed driver exposes one Windows capture endpoint named **InputRack
 Microphone**. Applications such as Discord select this endpoint as their input.
-The physical microphone remains owned by the VocalChain desktop application.
+The physical microphone remains owned by the InputRack desktop application.
 
 ```text
 physical microphone -> JUCE/VST3 graph -> PCM16 packet transport
@@ -87,8 +87,8 @@ Check all three installation layers at any time without administrator rights:
 .\driver\windows\manage-driver.ps1 Status
 ```
 
-`Device`, `Driver`, and `Endpoint` must all be available. Start VocalChain and
-select **VocalChain Microphone** as the input device in Discord. Local monitoring
+`Device`, `Driver`, and `Endpoint` must all be available. Start InputRack and
+select **InputRack Microphone** as the input device in Discord. Local monitoring
 may remain off; it is a separate branch from the virtual microphone.
 
 For a clean development uninstall, use an Administrator PowerShell:

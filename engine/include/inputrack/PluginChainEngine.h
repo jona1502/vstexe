@@ -1,9 +1,9 @@
 #pragma once
-#include <vocalchain/ChainState.h>
-#include <vocalchain/VirtualMicrophone.h>
+#include <inputrack/ChainState.h>
+#include <inputrack/VirtualMicrophone.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 
-namespace vocalchain {
+namespace inputrack {
 class PluginChainEngine final {
 public:
     static constexpr double sampleRate = 48000.0;

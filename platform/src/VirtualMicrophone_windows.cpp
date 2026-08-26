@@ -1,5 +1,5 @@
-#include <vocalchain/VirtualMicrophone.h>
-#include <vocalchain/VirtualMicProtocol.h>
+#include <inputrack/VirtualMicrophone.h>
+#include <inputrack/VirtualMicProtocol.h>
 
 #define NOMINMAX
 #include <Windows.h>
@@ -13,7 +13,7 @@
 #include <cstring>
 #include <vector>
 
-namespace vocalchain {
+namespace inputrack {
 namespace protocol = virtualmic;
 
 namespace {
@@ -34,7 +34,7 @@ private:
 class WindowsVirtualMicrophone final : public VirtualMicrophone, private juce::Thread {
 public:
     WindowsVirtualMicrophone()
-        : Thread("VocalChain virtual microphone writer"),
+        : Thread("InputRack virtual microphone writer"),
           fifo(static_cast<int>(protocol::ringCapacityFrames)),
           floatBuffer(protocol::ringCapacityFrames),
           packet(protocol::maximumPacketBytes)
@@ -52,7 +52,7 @@ public:
 
         device = findCompatibleFilter();
         if (device == INVALID_HANDLE_VALUE)
-            return "VocalChain Virtual Mic driver was not found";
+            return "InputRack Virtual Mic driver was not found";
 
         fifo.reset();
         sequence = 0;
@@ -215,4 +215,4 @@ std::unique_ptr<VirtualMicrophone> createWindowsVirtualMicrophone()
 {
     return std::make_unique<WindowsVirtualMicrophone>();
 }
-} // namespace vocalchain
+} // namespace inputrack

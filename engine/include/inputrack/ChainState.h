@@ -1,7 +1,7 @@
 #pragma once
 #include <juce_audio_processors/juce_audio_processors.h>
 
-namespace vocalchain {
+namespace inputrack {
 class ChainState final {
 public:
     static constexpr int currentSchemaVersion = 1;

@@ -15,7 +15,7 @@ visible in the list.
 ## M2 — Fedora virtual microphone
 
 - implement `VirtualMicrophone` with native PipeWire streams
-- publish a stable `Audio/Source` node named `VocalChain Virtual Microphone`
+- publish a stable `Audio/Source` node named `InputRack Virtual Microphone`
 - route processed blocks directly to it, not through a monitor output
 - reconnect after PipeWire restart and publish silence while capture is absent
 - package as AppImage and RPM for the first Fedora release

@@ -1,6 +1,6 @@
-#include <vocalchain/VirtualMicrophone.h>
+#include <inputrack/VirtualMicrophone.h>
 
-namespace vocalchain {
+namespace inputrack {
 #if JUCE_WINDOWS
 std::unique_ptr<VirtualMicrophone> createWindowsVirtualMicrophone();
 #endif

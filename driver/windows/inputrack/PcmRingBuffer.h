@@ -1,6 +1,6 @@
 #pragma once
 
-namespace vocalchain::driver {
+namespace inputrack::driver {
 
 using ring_size_type = decltype(sizeof(0));
 
@@ -90,4 +90,4 @@ private:
     unsigned long long silentFrames{};
 };
 
-} // namespace vocalchain::driver
+} // namespace inputrack::driver

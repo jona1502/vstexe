@@ -17,7 +17,7 @@ if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $repositoryRoot 'out\windows'
 }
 
-$application = Join-Path $BuildDirectory 'apps\desktop\VocalChain_artefacts\Release\VocalChain.exe'
+$application = Join-Path $BuildDirectory 'apps\desktop\InputRack_artefacts\Release\InputRack.exe'
 if (-not (Test-Path -LiteralPath $application)) {
     throw "Release application not found at $application. Build the windows-release preset first."
 }
@@ -40,14 +40,14 @@ if ([string]::IsNullOrWhiteSpace($compiler)) {
 }
 
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
-$definition = Join-Path $PSScriptRoot 'VocalChain.iss'
+$definition = Join-Path $PSScriptRoot 'InputRack.iss'
 & $compiler "/DAppVersion=$Version" "/DAppBinary=$application" `
     "/DOutputDirectory=$OutputDirectory" $definition
 if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup failed with exit code $LASTEXITCODE."
 }
 
-$installer = Join-Path $OutputDirectory "VocalChain-$Version-Windows-x64-Setup.exe"
+$installer = Join-Path $OutputDirectory "InputRack-$Version-Windows-x64-Setup.exe"
 if (-not (Test-Path -LiteralPath $installer)) {
     throw "Expected installer was not created at $installer"
 }

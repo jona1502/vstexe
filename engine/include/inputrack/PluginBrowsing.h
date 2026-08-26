@@ -1,7 +1,7 @@
 #pragma once
 #include <juce_audio_processors/juce_audio_processors.h>
 
-namespace vocalchain {
+namespace inputrack {
 /**
  * Narrows a scanned plug-in list to what the user is looking for.
  *

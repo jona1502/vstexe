@@ -1,4 +1,4 @@
-#include <vocalchain/VirtualMicProtocol.h>
+#include <inputrack/VirtualMicProtocol.h>
 #include <iostream>
 
 namespace {
@@ -12,7 +12,7 @@ void expect(bool condition, const char* message)
 
 int main()
 {
-    using namespace vocalchain::virtualmic;
+    using namespace inputrack::virtualmic;
 
     expect(isCompatible(ProtocolInfo{}), "default protocol information is compatible");
 

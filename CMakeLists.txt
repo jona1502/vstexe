@@ -1,16 +1,16 @@
 cmake_minimum_required(VERSION 3.25)
-set(VOCALCHAIN_VERSION "0.1.0" CACHE STRING "VocalChain release version")
-project(VocalChain VERSION ${VOCALCHAIN_VERSION} LANGUAGES C CXX)
+set(INPUTRACK_VERSION "0.1.0" CACHE STRING "InputRack release version")
+project(InputRack VERSION ${INPUTRACK_VERSION} LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(VOCALCHAIN_BUILD_TESTS "Build VocalChain tests" ON)
-set(VOCALCHAIN_JUCE_SOURCE_DIR "" CACHE PATH "Path to a local JUCE checkout")
+option(INPUTRACK_BUILD_TESTS "Build InputRack tests" ON)
+set(INPUTRACK_JUCE_SOURCE_DIR "" CACHE PATH "Path to a local JUCE checkout")
 
-if(VOCALCHAIN_JUCE_SOURCE_DIR)
-    add_subdirectory("${VOCALCHAIN_JUCE_SOURCE_DIR}" JUCE)
+if(INPUTRACK_JUCE_SOURCE_DIR)
+    add_subdirectory("${INPUTRACK_JUCE_SOURCE_DIR}" JUCE)
 else()
     include(FetchContent)
     FetchContent_Declare(JUCE
@@ -25,7 +25,7 @@ add_subdirectory(engine)
 add_subdirectory(update)
 add_subdirectory(apps/desktop)
 
-if(VOCALCHAIN_BUILD_TESTS)
+if(INPUTRACK_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()

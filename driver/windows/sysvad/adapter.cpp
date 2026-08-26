@@ -23,7 +23,7 @@ Abstract:
 #include <sysvad.h>
 #include <ContosoKeywordDetector.h>
 #include "IHVPrivatePropertySet.h"
-#include "../vocalchain/VirtualMicTransport.h"
+#include "../inputrack/VirtualMicTransport.h"
 
 #include "simple.h"
 #include "minipairs.h"
@@ -327,7 +327,7 @@ Environment:
 
     DPF(D_TERSE, ("[DriverUnload]"));
 
-    VocalChainVirtualMicShutdown();
+    InputRackVirtualMicShutdown();
 
     ReleaseRegistryStringBuffer();
 
@@ -570,7 +570,7 @@ Return Value:
         DPF(D_ERROR, ("Registry Configuration error 0x%x", ntStatus)),
         Done);
 
-    ntStatus = VocalChainVirtualMicInitialize();
+    ntStatus = InputRackVirtualMicInitialize();
     IF_FAILED_ACTION_JUMP(
         ntStatus,
         DPF(D_ERROR, ("Virtual microphone transport initialization failed, 0x%x", ntStatus)),

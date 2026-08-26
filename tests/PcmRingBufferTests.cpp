@@ -1,4 +1,4 @@
-#include <vocalchain/VirtualMicProtocol.h>
+#include <inputrack/VirtualMicProtocol.h>
 #include "PcmRingBuffer.h"
 #include <array>
 #include <iostream>
@@ -15,7 +15,7 @@ void expect(bool condition, const char* message)
 int main()
 {
     std::array<std::int16_t, 5> storage{};
-    vocalchain::driver::PcmRingBuffer ring;
+    inputrack::driver::PcmRingBuffer ring;
     ring.initialize(storage.data(), storage.size());
 
     const std::array<std::int16_t, 3> first{1, 2, 3};

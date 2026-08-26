@@ -1,5 +1,5 @@
 {
-  "name": "@vocalchain/web",
+  "name": "@inputrack/web",
   "type": "module",
   "version": "0.1.0",
   "private": true,

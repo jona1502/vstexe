@@ -23,7 +23,7 @@ constexpr float controlRadius = 8.0f;
 juce::File pluginDataDirectory()
 {
     return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-        .getChildFile("VocalChain");
+        .getChildFile("InputRack");
 }
 
 juce::File settingsFile()
@@ -75,7 +75,7 @@ public:
 };
 }
 
-VocalChainLookAndFeel::VocalChainLookAndFeel()
+InputRackLookAndFeel::InputRackLookAndFeel()
 {
     setColour(juce::Label::textColourId, juce::Colour(text));
     setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
@@ -98,7 +98,7 @@ VocalChainLookAndFeel::VocalChainLookAndFeel()
     setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(accent));
 }
 
-void VocalChainLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button,
+void InputRackLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button,
                                                   const juce::Colour&, bool highlighted, bool down)
 {
     const auto isPrimary = button.getComponentID() == "primary";
@@ -131,7 +131,7 @@ void VocalChainLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button
     }
 }
 
-void VocalChainLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& button,
+void InputRackLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& button,
                                             bool, bool)
 {
     const auto isPrimary = button.getComponentID() == "primary";
@@ -142,7 +142,7 @@ void VocalChainLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& 
                      juce::Justification::centred, 1);
 }
 
-void VocalChainLookAndFeel::drawComboBox(juce::Graphics& g, int width, int height, bool isDown,
+void InputRackLookAndFeel::drawComboBox(juce::Graphics& g, int width, int height, bool isDown,
                                           int, int, int, int, juce::ComboBox& box)
 {
     const auto bounds = juce::Rectangle<float>(0.5f, 0.5f, static_cast<float>(width - 1),
@@ -164,7 +164,7 @@ void VocalChainLookAndFeel::drawComboBox(juce::Graphics& g, int width, int heigh
                                                juce::PathStrokeType::rounded));
 }
 
-void VocalChainLookAndFeel::positionComboBoxText(juce::ComboBox& box, juce::Label& label)
+void InputRackLookAndFeel::positionComboBoxText(juce::ComboBox& box, juce::Label& label)
 {
     label.setBounds(12, 1, box.getWidth() - 40, box.getHeight() - 2);
     label.setFont(juce::FontOptions(13.0f));
@@ -216,7 +216,7 @@ MainComponent::MainComponent()
     pluginSearch.setColour(juce::TextEditor::highlightColourId, juce::Colour(accentDeep));
     pluginSearch.onTextChange = [this] { refreshAvailablePlugins(); };
 
-    status.setText("Select a microphone, scan VST3 plug-ins, then build your Vocal Chain.",
+    status.setText("Select a microphone, scan VST3 plug-ins, then build your rack.",
                    juce::dontSendNotification);
     status.setColour(juce::Label::textColourId, juce::Colour(textMuted));
     status.setFont(juce::FontOptions(12.5f));
@@ -445,7 +445,7 @@ void MainComponent::run()
         juce::PluginDirectoryScanner scanner(engine.knownPlugins(), *format,
             format->getDefaultLocationsToSearch(), true,
             pluginDataDirectory()
-                .getChildFile("vocalchain-scan-dead-mans-pedal.txt"));
+                .getChildFile("inputrack-scan-dead-mans-pedal.txt"));
         juce::String current;
         while (!threadShouldExit()) {
             {
@@ -503,10 +503,10 @@ void MainComponent::refreshAvailablePlugins()
     // every keystroke in the search field.
     availablePlugins.clear(juce::dontSendNotification);
     const auto sort = selectedSort();
-    visiblePlugins = vocalchain::filterAndSortPlugins(engine.knownPlugins().getTypes(),
+    visiblePlugins = inputrack::filterAndSortPlugins(engine.knownPlugins().getTypes(),
                                                       pluginSearch.getText(), sort);
     for (int i = 0; i < visiblePlugins.size(); ++i)
-        availablePlugins.addItem(vocalchain::pluginDisplayName(visiblePlugins.getReference(i), sort),
+        availablePlugins.addItem(inputrack::pluginDisplayName(visiblePlugins.getReference(i), sort),
                                  i + 1);
 }
 
@@ -567,7 +567,7 @@ void MainComponent::openSelectedPlugin()
 
 void MainComponent::savePreset()
 {
-    chooser = std::make_unique<juce::FileChooser>("Save Vocal Chain", juce::File{}, "*.vocalchain.json");
+    chooser = std::make_unique<juce::FileChooser>("Save Rack", juce::File{}, "*.inputrack.json");
     chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
         [this](const juce::FileChooser& fc) {
             auto file = fc.getResult();
@@ -578,14 +578,14 @@ void MainComponent::savePreset()
 
 void MainComponent::loadPreset()
 {
-    chooser = std::make_unique<juce::FileChooser>("Load Vocal Chain", juce::File{}, "*.vocalchain.json");
+    chooser = std::make_unique<juce::FileChooser>("Load Rack", juce::File{}, "*.inputrack.json");
     chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
         [this](const juce::FileChooser& fc) {
             try {
                 editorWindow.reset();
                 editorPlugin = nullptr;
                 juce::String error;
-                if (!engine.restoreState(vocalchain::ChainState::fromJson(fc.getResult().loadFileAsString()), error))
+                if (!engine.restoreState(inputrack::ChainState::fromJson(fc.getResult().loadFileAsString()), error))
                     showError("Could not restore preset", error);
                 refresh();
             } catch (const std::exception& e) { showError("Invalid preset", e.what()); }
@@ -610,7 +610,7 @@ void MainComponent::startUpdateCheck(bool requestedByUser)
     if (updates.isBusy()) return;
     if (requestedByUser) status.setText("Checking for updates...", juce::dontSendNotification);
     checkUpdates.setEnabled(false);
-    updates.check([this, requestedByUser](std::optional<vocalchain::AvailableUpdate> found,
+    updates.check([this, requestedByUser](std::optional<inputrack::AvailableUpdate> found,
                                           juce::String error) {
         checkUpdates.setEnabled(true);
         if (error.isNotEmpty()) {
@@ -619,11 +619,11 @@ void MainComponent::startUpdateCheck(bool requestedByUser)
         }
         updateCheckFinished(found, error);
         if (!found.has_value() && requestedByUser)
-            status.setText("VocalChain is up to date.", juce::dontSendNotification);
+            status.setText("InputRack is up to date.", juce::dontSendNotification);
     });
 }
 
-void MainComponent::updateCheckFinished(std::optional<vocalchain::AvailableUpdate> found,
+void MainComponent::updateCheckFinished(std::optional<inputrack::AvailableUpdate> found,
                                         const juce::String&)
 {
     availableUpdate = found;
@@ -653,7 +653,7 @@ void MainComponent::startUpdateDownload()
         }
         // The installer closes this process through the restart manager, so the
         // engine is shut down first and the app asked to quit straight after.
-        if (!vocalchain::UpdateChecker::launchInstaller(setup)) {
+        if (!inputrack::UpdateChecker::launchInstaller(setup)) {
             showError("Update failed", "The installer could not be started.");
             return;
         }
@@ -662,7 +662,7 @@ void MainComponent::startUpdateDownload()
 }
 
 /*
- * The processed chain leaves VocalChain through the selected output device, so
+ * The processed chain leaves InputRack through the selected output device, so
  * the status line has to name that device and the capture endpoint another app
  * has to pick. Monitoring gates that connection, which is why an inactive
  * monitor is reported as the reason nothing is being published.
@@ -674,11 +674,11 @@ juce::String MainComponent::routingStatus() const
     if (!engine.isMonitoringEnabled())
         return "Monitor is off, so nothing reaches " + output + " yet.";
 
-    if (!vocalchain::PluginChainEngine::looksLikeVirtualCable(output))
+    if (!inputrack::PluginChainEngine::looksLikeVirtualCable(output))
         return "Sending to " + output
              + ". Select a virtual audio cable here to make other apps hear the chain.";
 
-    const auto capture = vocalchain::PluginChainEngine::pairedCaptureName(output);
+    const auto capture = inputrack::PluginChainEngine::pairedCaptureName(output);
     if (capture.isEmpty())
         return "Sending to " + output + ". Select its capture side in Discord or OBS.";
     return "Sending to " + output + ". Select \"" + capture + "\" in Discord or OBS.";

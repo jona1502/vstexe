@@ -1,8 +1,8 @@
-#include <vocalchain/PluginBrowsing.h>
+#include <inputrack/PluginBrowsing.h>
 #include <algorithm>
 #include <vector>
 
-namespace vocalchain {
+namespace inputrack {
 namespace {
 bool matchesSearch(const juce::PluginDescription& plugin, const juce::String& search)
 {

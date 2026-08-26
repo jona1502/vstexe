@@ -1,6 +1,6 @@
 #pragma once
 
-namespace vocalchain::virtualmic {
+namespace inputrack::virtualmic {
 
 using u8 = unsigned char;
 using u16 = unsigned short;
@@ -45,7 +45,7 @@ struct ProtocolInfo {
     u32 structureSize{sizeof(ProtocolInfo)};
     u32 sampleRateHz{sampleRate};
     u16 channels{channelCount};
-    u16 bitsPerSample{vocalchain::virtualmic::bitsPerSample};
+    u16 bitsPerSample{inputrack::virtualmic::bitsPerSample};
     SampleFormat sampleFormat{SampleFormat::signedPcm16LittleEndian};
     u16 reserved{};
     u32 maximumPacketFrames{maximumFramesPerPacket};
@@ -99,4 +99,4 @@ static_assert(sizeof(ProtocolInfo) == 28);
 static_assert(sizeof(AudioPacketHeader) == 24);
 static_assert(sizeof(TransportStatus) == 48);
 
-} // namespace vocalchain::virtualmic
+} // namespace inputrack::virtualmic

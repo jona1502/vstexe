@@ -3,8 +3,8 @@
  * Claims here must stay verifiable against the desktop app and docs/.
  */
 export const site = {
-  name: 'VocalChain',
-  tagline: 'Your voice. Your chain. Everywhere.',
+  name: 'InputRack',
+  tagline: 'Your input. Your effects. Everywhere.',
   description:
     'Route your physical microphone through your own 64-bit VST3 effects and send the processed signal wherever you need it, through a virtual audio cable.',
   repo: 'https://github.com/jona1502/vstexe',
@@ -16,7 +16,7 @@ export const site = {
    * audio cable the user installs separately, so the page has to say so.
    */
   previewNotice:
-    'Publishing needs a virtual audio cable such as VB-CABLE, installed separately. The bundled VocalChain microphone driver is not release-signed yet.',
+    'Publishing needs a virtual audio cable such as VB-CABLE, installed separately. The bundled InputRack microphone driver is not release-signed yet.',
   cableUrl: 'https://vb-audio.com/Cable/',
 } as const;
 
@@ -54,7 +54,7 @@ export const featureMatrix = [
   {
     icon: 'waveform',
     title: 'Presets',
-    detail: 'Save the whole chain as a versioned .vocalchain.json file.',
+    detail: 'Save the whole chain as a versioned .inputrack.json file.',
   },
   {
     icon: 'virtual-mic',
@@ -72,7 +72,7 @@ export const featureBenefits = [
   {
     title: 'Use plug-ins you already own',
     detail:
-      'No bundled effects to learn and no subscription. VocalChain hosts the 64-bit VST3 effects already installed on your system.',
+      'No bundled effects to learn and no subscription. InputRack hosts the 64-bit VST3 effects already installed on your system.',
   },
   {
     title: 'Keep processing on your machine',
@@ -114,7 +114,7 @@ export const presetPoints = [
   {
     title: 'Versioned and inspectable',
     detail:
-      'A schemaVersion guards the format and a preset from a newer VocalChain is rejected instead of silently misread.',
+      'A schemaVersion guards the format and a preset from a newer InputRack is rejected instead of silently misread.',
   },
 ] as const;
 

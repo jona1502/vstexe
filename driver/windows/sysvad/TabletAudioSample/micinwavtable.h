@@ -15,7 +15,7 @@ Abstract:
 #ifndef _SYSVAD_MICINWAVTABLE_H_
 #define _SYSVAD_MICINWAVTABLE_H_
 
-#include "../../vocalchain/VirtualMicTransport.h"
+#include "../../inputrack/VirtualMicTransport.h"
 
 //
 // Mic in (external: headphone) range.
@@ -410,22 +410,22 @@ static
 PCPROPERTY_ITEM PropertiesMicInWaveFilter[] =
 {
     {
-        &KSPROPSETID_VocalChainVirtualMic,
-        static_cast<ULONG>(vocalchain::virtualmic::PropertyId::protocolInfo),
+        &KSPROPSETID_InputRackVirtualMic,
+        static_cast<ULONG>(inputrack::virtualmic::PropertyId::protocolInfo),
         KSPROPERTY_TYPE_GET | KSPROPERTY_TYPE_BASICSUPPORT,
-        PropertyHandler_VocalChainVirtualMic
+        PropertyHandler_InputRackVirtualMic
     },
     {
-        &KSPROPSETID_VocalChainVirtualMic,
-        static_cast<ULONG>(vocalchain::virtualmic::PropertyId::audioPacket),
+        &KSPROPSETID_InputRackVirtualMic,
+        static_cast<ULONG>(inputrack::virtualmic::PropertyId::audioPacket),
         KSPROPERTY_TYPE_SET | KSPROPERTY_TYPE_BASICSUPPORT,
-        PropertyHandler_VocalChainVirtualMic
+        PropertyHandler_InputRackVirtualMic
     },
     {
-        &KSPROPSETID_VocalChainVirtualMic,
-        static_cast<ULONG>(vocalchain::virtualmic::PropertyId::transportStatus),
+        &KSPROPSETID_InputRackVirtualMic,
+        static_cast<ULONG>(inputrack::virtualmic::PropertyId::transportStatus),
         KSPROPERTY_TYPE_GET | KSPROPERTY_TYPE_BASICSUPPORT,
-        PropertyHandler_VocalChainVirtualMic
+        PropertyHandler_InputRackVirtualMic
     },
     {
         &KSPROPSETID_General,

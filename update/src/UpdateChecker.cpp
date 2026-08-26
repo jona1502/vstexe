@@ -1,8 +1,8 @@
-#include <vocalchain/UpdateChecker.h>
+#include <inputrack/UpdateChecker.h>
 #include <juce_cryptography/juce_cryptography.h>
 #include <juce_events/juce_events.h>
 
-namespace vocalchain {
+namespace inputrack {
 namespace {
 constexpr const char* releasesApi =
     "https://api.github.com/repos/jona1502/vstexe/releases/latest";
@@ -24,7 +24,7 @@ juce::String fetch(const juce::String& url, juce::String& error)
     // GitHub rejects API requests without a user agent, so it is not optional.
     const auto options = juce::URL::InputStreamOptions(juce::URL::ParameterHandling::inAddress)
                              .withConnectionTimeoutMs(connectionTimeoutMs)
-                             .withExtraHeaders("User-Agent: VocalChain");
+                             .withExtraHeaders("User-Agent: InputRack");
     if (auto stream = juce::URL(url).createInputStream(options))
         return stream->readEntireStreamAsString();
     error = "Could not reach " + juce::URL(url).getDomain() + ".";
@@ -33,7 +33,7 @@ juce::String fetch(const juce::String& url, juce::String& error)
 }
 
 UpdateChecker::UpdateChecker(juce::String version, juce::File directory)
-    : Thread("VocalChain update checker"),
+    : Thread("InputRack update checker"),
       currentVersion(std::move(version)),
       stateDirectory(std::move(directory))
 {
@@ -95,12 +95,14 @@ std::optional<AvailableUpdate> UpdateChecker::parseLatestRelease(const juce::Str
 
     AvailableUpdate update;
     update.version = version;
+    const auto installerName = "InputRack-" + version + "-Windows-x64-Setup.exe";
+    const auto checksumName = installerName + ".sha256";
     for (const auto& asset : *assets) {
         const auto name = asset.getProperty("name", {}).toString();
         const auto url = asset.getProperty("browser_download_url", {}).toString();
         if (!isTrustedDownloadUrl(url)) continue;
-        if (name.endsWithIgnoreCase(".sha256")) update.checksumUrl = url;
-        else if (name.endsWithIgnoreCase(".exe")) update.downloadUrl = url;
+        if (name == checksumName) update.checksumUrl = url;
+        else if (name == installerName) update.downloadUrl = url;
     }
 
     // Without both halves the download could not be verified, so a release
@@ -166,12 +168,12 @@ void UpdateChecker::runDownload()
     if (threadShouldExit()) return;
 
     stateDirectory.createDirectory();
-    const auto setup = stateDirectory.getChildFile("VocalChain-" + pending.version + "-Setup.exe");
+    const auto setup = stateDirectory.getChildFile("InputRack-" + pending.version + "-Setup.exe");
     setup.deleteFile();
 
     const auto options = juce::URL::InputStreamOptions(juce::URL::ParameterHandling::inAddress)
                              .withConnectionTimeoutMs(connectionTimeoutMs)
-                             .withExtraHeaders("User-Agent: VocalChain");
+                             .withExtraHeaders("User-Agent: InputRack");
     auto stream = juce::URL(pending.downloadUrl).createInputStream(options);
     if (stream == nullptr) { report({}, "The installer could not be downloaded."); return; }
 
@@ -198,7 +200,7 @@ void UpdateChecker::runDownload()
 bool UpdateChecker::launchInstaller(const juce::File& setup)
 {
 #if JUCE_WINDOWS
-    // Silent, with the restart manager closing and reopening VocalChain around
+    // Silent, with the restart manager closing and reopening InputRack around
     // the file replacement. The install location needs no elevation.
     return setup.startAsProcess("/SILENT /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS /NOCANCEL");
 #else

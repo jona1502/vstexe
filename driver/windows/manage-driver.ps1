@@ -11,9 +11,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$hardwareId = 'Root\VocalChainVirtualMic'
+$hardwareId = 'Root\InputRackVirtualMic'
 $serviceName = 'sysvad_componentizedaudiosample'
-$certificateSubject = 'CN=VocalChain Development Driver'
+$certificateSubject = 'CN=InputRack Development Driver'
 $windowsKits = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10'
 $repositoryRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 
@@ -49,9 +49,9 @@ function Get-TestSigningEnabled {
 
 function Show-Status {
     $device = Get-PnpDevice -ErrorAction SilentlyContinue |
-        Where-Object { $_.InstanceId -like 'ROOT\VOCALCHAINVIRTUALMIC*' }
+        Where-Object { $_.InstanceId -like 'ROOT\INPUTRACKVIRTUALMIC*' }
     $endpoint = Get-PnpDevice -Class AudioEndpoint -ErrorAction SilentlyContinue |
-        Where-Object { $_.FriendlyName -like 'VocalChain Microphone*' }
+        Where-Object { $_.FriendlyName -like 'InputRack Microphone*' }
     $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
 
     [pscustomobject]@{
@@ -75,7 +75,7 @@ $devcon = Get-WdkTool 'Tools' 'devcon.exe' 'x64'
 
 if ($Action -eq 'Uninstall') {
     $driverPackages = Get-CimInstance Win32_PnPSignedDriver |
-        Where-Object { $_.DeviceID -like 'ROOT\VOCALCHAINVIRTUALMIC*' } |
+        Where-Object { $_.DeviceID -like 'ROOT\INPUTRACKVIRTUALMIC*' } |
         Select-Object -ExpandProperty InfName -Unique
 
     & $devcon remove $hardwareId
@@ -85,7 +85,7 @@ if ($Action -eq 'Uninstall') {
     foreach ($driverPackage in $driverPackages) {
         Invoke-Native 'pnputil.exe' @('/delete-driver', $driverPackage, '/uninstall', '/force')
     }
-    Write-Host 'VocalChain Virtual Microphone was removed.'
+    Write-Host 'InputRack Virtual Microphone was removed.'
     return
 }
 
@@ -122,7 +122,7 @@ if ($null -eq $certificate) {
         -HashAlgorithm SHA256 -KeyExportPolicy Exportable
 }
 
-$certificateFile = Join-Path $package 'VocalChainDevelopmentDriver.cer'
+$certificateFile = Join-Path $package 'InputRackDevelopmentDriver.cer'
 Export-Certificate -Cert $certificate -FilePath $certificateFile -Force | Out-Null
 Import-Certificate -FilePath $certificateFile -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
 Import-Certificate -FilePath $certificateFile -CertStoreLocation Cert:\LocalMachine\TrustedPublisher | Out-Null
@@ -143,6 +143,6 @@ if ($LASTEXITCODE -gt 1) {
 if ($LASTEXITCODE -eq 1) {
     Write-Warning 'The driver was installed and Windows requested a restart.'
 } else {
-    Write-Host 'VocalChain Virtual Microphone is installed.'
+    Write-Host 'InputRack Virtual Microphone is installed.'
 }
 Show-Status

@@ -1,4 +1,4 @@
-#include <vocalchain/ChainState.h>
+#include <inputrack/ChainState.h>
 #include <iostream>
 
 namespace {
@@ -11,11 +11,11 @@ void expect(bool condition, const char* message)
 
 int main()
 {
-    vocalchain::ChainState state;
+    inputrack::ChainState state;
     state.setName("Streaming Voice");
     juce::PluginDescription plugin;
     plugin.name = "Test Compressor";
-    plugin.manufacturerName = "VocalChain Tests";
+    plugin.manufacturerName = "InputRack Tests";
     plugin.fileOrIdentifier = "test.plugin";
     plugin.uniqueId = 42;
     plugin.pluginFormatName = "VST3";
@@ -24,7 +24,7 @@ int main()
     state.addPlugin(plugin, pluginState);
     state.setBypassed(0, true);
 
-    const auto restored = vocalchain::ChainState::fromJson(state.toJson());
+    const auto restored = inputrack::ChainState::fromJson(state.toJson());
     expect(restored.name() == "Streaming Voice", "preset name round-trips");
     expect(restored.size() == 1, "plug-in count round-trips");
     expect(restored.pluginAt(0).getProperty("name") == "Test Compressor", "plug-in identity round-trips");

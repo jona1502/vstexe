@@ -23,7 +23,7 @@ DRMLevel=1300
 %MfgName%=SYSVAD,NT$ARCH$.10.0...22621
 
 [SYSVAD.NT$ARCH$.10.0...22621]
-%SYSVAD_SA.DeviceDesc%=SYSVAD_SA, Root\VocalChainVirtualMic
+%SYSVAD_SA.DeviceDesc%=SYSVAD_SA, Root\InputRackVirtualMic
 
 [DestinationDirs]
 SYSVAD_SA.CopyList=13 ; 13=Package's DriverStore directory
@@ -550,13 +550,13 @@ MicInCustomNameGUID = {c545a101-0bb0-4e75-8d96-731d63b29f87}
 
 ;Localizable
 
-ProviderName = "VocalChain"
-MfgName      = "VocalChain"
-MsCopyRight  = "Copyright (c) VocalChain contributors"
+ProviderName = "InputRack"
+MfgName      = "InputRack"
+MsCopyRight  = "Copyright (c) InputRack contributors"
 
 
-SYSVAD_SA.DeviceDesc="VocalChain Virtual Microphone"
-SYSVAD_ComponentizedAudioSample.SvcDesc="VocalChain Virtual Microphone Driver"
+SYSVAD_SA.DeviceDesc="InputRack Virtual Microphone"
+SYSVAD_ComponentizedAudioSample.SvcDesc="InputRack Virtual Microphone Driver"
 SYSVAD_MIDI="Virtual Audio Device (WDM) - Midi Device"
 
 ;; friendly names
@@ -572,8 +572,8 @@ SYSVAD.TopologyHdmi.szPname="SYSVAD Topology HDMI"
 SYSVAD.WaveSpdif.szPname="SYSVAD Wave SPDIF"
 SYSVAD.TopologySpdif.szPname="SYSVAD Topology SPDIF"
 
-SYSVAD.WaveMicIn.szPname="VocalChain Microphone Wave"
-SYSVAD.TopologyMicIn.szPname="VocalChain Microphone Topology"
+SYSVAD.WaveMicIn.szPname="InputRack Microphone Wave"
+SYSVAD.TopologyMicIn.szPname="InputRack Microphone Topology"
 
 SYSVAD.WaveMicArray1.szPname="SYSVAD Wave Microphone Array - Front"
 SYSVAD.TopologyMicArray1.szPname="SYSVAD Topology Microphone Array - Front"
@@ -599,5 +599,5 @@ SYSVAD.TopologyUsbHsMic.szPname="SYSVAD Topology USB Headset Microphone"
 MicArray1CustomName= "Internal Microphone Array - Front"
 MicArray2CustomName= "Internal Microphone Array - Rear"
 MicArray3CustomName= "Internal Microphone Array - Front/Rear"
-MicInCustomName= "VocalChain Microphone"
+MicInCustomName= "InputRack Microphone"
 

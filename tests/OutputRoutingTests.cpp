@@ -1,4 +1,4 @@
-#include <vocalchain/PluginChainEngine.h>
+#include <inputrack/PluginChainEngine.h>
 #include <iostream>
 
 namespace {
@@ -11,7 +11,7 @@ void expect(bool condition, const char* message)
 
 int main()
 {
-    using Engine = vocalchain::PluginChainEngine;
+    using Engine = inputrack::PluginChainEngine;
 
     // Recognising the cable decides whether the app tells the user to pick a
     // different output device, so both directions have to be reliable.

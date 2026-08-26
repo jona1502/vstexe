@@ -1,4 +1,4 @@
-#include <vocalchain/UpdateChecker.h>
+#include <inputrack/UpdateChecker.h>
 #include <iostream>
 
 namespace {
@@ -19,16 +19,16 @@ juce::String asset(const juce::String& name, const juce::String& url)
 }
 
 const juce::String setupAsset =
-    asset("VocalChain-0.1.5-Windows-x64-Setup.exe",
-          "https://github.com/jona1502/vstexe/releases/download/v0.1.5/VocalChain-0.1.5-Windows-x64-Setup.exe");
+    asset("InputRack-0.1.5-Windows-x64-Setup.exe",
+          "https://github.com/jona1502/vstexe/releases/download/v0.1.5/InputRack-0.1.5-Windows-x64-Setup.exe");
 const juce::String checksumAsset =
-    asset("VocalChain-0.1.5-Windows-x64-Setup.exe.sha256",
-          "https://github.com/jona1502/vstexe/releases/download/v0.1.5/VocalChain-0.1.5-Windows-x64-Setup.exe.sha256");
+    asset("InputRack-0.1.5-Windows-x64-Setup.exe.sha256",
+          "https://github.com/jona1502/vstexe/releases/download/v0.1.5/InputRack-0.1.5-Windows-x64-Setup.exe.sha256");
 }
 
 int main()
 {
-    using Checker = vocalchain::UpdateChecker;
+    using Checker = inputrack::UpdateChecker;
 
     // Segment-wise numeric comparison. A string comparison claims 0.1.9 is the
     // newer of these two, which would strand everyone on an old build.
@@ -65,10 +65,20 @@ int main()
 
     // A tampered payload must not be able to redirect the download.
     const auto offSite =
-        asset("VocalChain-0.1.5-Windows-x64-Setup.exe", "https://example.com/evil.exe");
+        asset("InputRack-0.1.5-Windows-x64-Setup.exe", "https://example.com/evil.exe");
     expect(!Checker::parseLatestRelease(
                release("v0.1.5", offSite + "," + checksumAsset), "0.1.4").has_value(),
            "an asset hosted off GitHub is refused");
+
+    const auto otherSetup =
+        asset("OtherProduct-0.1.5-Windows-x64-Setup.exe",
+              "https://github.com/jona1502/vstexe/releases/download/v0.1.5/OtherProduct-0.1.5-Windows-x64-Setup.exe");
+    const auto otherChecksum =
+        asset("OtherProduct-0.1.5-Windows-x64-Setup.exe.sha256",
+              "https://github.com/jona1502/vstexe/releases/download/v0.1.5/OtherProduct-0.1.5-Windows-x64-Setup.exe.sha256");
+    expect(!Checker::parseLatestRelease(
+               release("v0.1.5", otherSetup + "," + otherChecksum), "0.1.4").has_value(),
+           "assets for a different product are ignored");
 
     expect(!Checker::parseLatestRelease("not json at all", "0.1.4").has_value(),
            "malformed payloads yield no update");

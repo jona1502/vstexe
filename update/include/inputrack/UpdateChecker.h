@@ -3,7 +3,7 @@
 #include <functional>
 #include <optional>
 
-namespace vocalchain {
+namespace inputrack {
 /** A release newer than the running build, with everything needed to install it. */
 struct AvailableUpdate {
     juce::String version;

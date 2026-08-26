@@ -1,6 +1,6 @@
-#include <vocalchain/PluginChainEngine.h>
+#include <inputrack/PluginChainEngine.h>
 
-namespace vocalchain {
+namespace inputrack {
 namespace {
 class VirtualMicrophoneSink final : public juce::AudioProcessor {
 public:
