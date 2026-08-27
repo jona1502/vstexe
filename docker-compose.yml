@@ -1,0 +1,6 @@
+services:
+  web:
+    image: ghcr.io/jona1502/vstexe:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3013:80"

@@ -3,7 +3,7 @@ import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  site: 'https://inputrack.app',
+  site: 'https://inputrack.muhrindustries.com',
   vite: {
     plugins: [tailwindcss()],
   },
