@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include <inputrack/IsolatedPluginScanner.h>
+#include <vector>
 
 namespace {
 // Mirrors the design tokens in apps/web/src/styles/global.css so the app and
@@ -14,6 +15,8 @@ constexpr juce::uint32 textFaint = 0xff6b7686;    // mist-600
 constexpr juce::uint32 accent = 0xff38dfe0;       // signal-400
 constexpr juce::uint32 accentBright = 0xff7df2ee; // signal-300
 constexpr juce::uint32 accentDeep = 0xff17c3c9;   // signal-500
+constexpr juce::uint32 warning = 0xffffb84d;
+constexpr juce::uint32 danger = 0xffff5d68;
 
 // Accent surfaces carry dark text, exactly as the buttons do on the site.
 constexpr juce::uint32 onAccent = 0xff08090c;
@@ -103,6 +106,95 @@ void drawLevelBar(juce::Graphics& g, juce::Rectangle<float> bounds, float level,
     }
     g.setColour(juce::Colour(border));
     g.drawRoundedRectangle(bounds.reduced(0.5f), bounds.getHeight() * 0.5f, 1.0f);
+}
+
+constexpr float meterMinimumDb = -60.0f;
+constexpr float meterMaximumDb = 3.0f;
+
+float meterYForDb(juce::Rectangle<float> bounds, float db)
+{
+    const auto normalised = juce::jmap(juce::jlimit(meterMinimumDb, meterMaximumDb, db),
+                                      meterMinimumDb, meterMaximumDb, 0.0f, 1.0f);
+    return bounds.getBottom() - normalised * bounds.getHeight();
+}
+
+juce::String formatMeterDb(float gain)
+{
+    const auto db = juce::Decibels::gainToDecibels(gain, meterMinimumDb);
+    if (db <= meterMinimumDb + 0.01f) return "-inf";
+    return juce::String(db, 1) + " dB";
+}
+
+void drawVerticalMeter(juce::Graphics& g, juce::Rectangle<int> area,
+                       const float levels[2], bool clipped, bool stereo)
+{
+    static constexpr float ticks[] = {3.0f, 0.0f, -6.0f, -12.0f, -18.0f,
+                                      -24.0f, -30.0f, -42.0f, -54.0f, -60.0f};
+    auto content = area.reduced(10, 4);
+    auto readout = content.removeFromBottom(48);
+    auto labels = content.removeFromLeft(42);
+    content.removeFromLeft(8);
+    auto meterBounds = content.reduced(16, 0).toFloat();
+
+    g.setFont(juce::FontOptions(10.0f));
+    for (const auto tick : ticks) {
+        const auto y = meterYForDb(meterBounds, tick);
+        g.setColour(juce::Colour(tick == 0.0f ? textMuted : textFaint));
+        g.drawText(tick > 0.0f ? "+" + juce::String(juce::roundToInt(tick))
+                              : juce::String(juce::roundToInt(tick)),
+                   labels.getX(), juce::roundToInt(y) - 7, labels.getWidth() - 7, 14,
+                   juce::Justification::centredRight);
+        g.setColour(juce::Colour(border).withAlpha(tick == 0.0f ? 0.95f : 0.55f));
+        g.drawHorizontalLine(juce::roundToInt(y), meterBounds.getX() - 6.0f,
+                             meterBounds.getRight() + 6.0f);
+    }
+
+    const auto channelCount = stereo ? 2 : 1;
+    const auto gap = 10.0f;
+    const auto barWidth = juce::jmin(30.0f,
+        (meterBounds.getWidth() - gap * static_cast<float>(channelCount - 1))
+            / static_cast<float>(channelCount));
+    const auto totalWidth = barWidth * channelCount + gap * (channelCount - 1);
+    auto x = meterBounds.getCentreX() - totalWidth * 0.5f;
+
+    for (int channel = 0; channel < channelCount; ++channel) {
+        auto bar = juce::Rectangle<float>(x, meterBounds.getY(), barWidth, meterBounds.getHeight());
+        g.setColour(juce::Colour(0xff0b0e13));
+        g.fillRoundedRectangle(bar, 3.0f);
+        g.setColour(juce::Colour(border));
+        g.drawRoundedRectangle(bar.reduced(0.5f), 3.0f, 1.0f);
+
+        const auto db = juce::jlimit(meterMinimumDb, meterMaximumDb,
+            juce::Decibels::gainToDecibels(levels[channel], meterMinimumDb));
+        const auto top = meterYForDb(bar, db);
+        auto fill = bar.withTop(top);
+        juce::ColourGradient gradient(juce::Colour(clipped ? danger : accent),
+                                      fill.getCentreX(), fill.getY(),
+                                      juce::Colour(0xff25989a), fill.getCentreX(),
+                                      fill.getBottom(), false);
+        if (!clipped && db > 0.0f)
+            gradient = juce::ColourGradient(juce::Colour(warning), fill.getCentreX(), fill.getY(),
+                                            juce::Colour(accent), fill.getCentreX(),
+                                            fill.getBottom(), false);
+        g.setGradientFill(gradient);
+        g.fillRoundedRectangle(fill.reduced(2.0f, 1.5f), 2.0f);
+
+        const auto zeroY = meterYForDb(bar, 0.0f);
+        g.setColour(juce::Colour(textMuted));
+        g.fillRect(bar.getX(), zeroY - 1.0f, bar.getWidth(), 2.0f);
+
+        g.setColour(juce::Colour(textMuted));
+        g.setFont(juce::FontOptions(10.0f, juce::Font::bold));
+        g.drawText(stereo ? (channel == 0 ? "L" : "R") : "MONO",
+                   juce::roundToInt(x - 4.0f), readout.getY(), juce::roundToInt(barWidth + 8.0f), 16,
+                   juce::Justification::centred);
+        x += barWidth + gap;
+    }
+
+    g.setColour(juce::Colour(text));
+    g.setFont(juce::FontOptions(12.0f, juce::Font::bold));
+    const auto peak = stereo ? juce::jmax(levels[0], levels[1]) : levels[0];
+    g.drawText(formatMeterDb(peak), readout.removeFromBottom(28), juce::Justification::centred);
 }
 
 class PluginEditorWindow final : public juce::DocumentWindow {
@@ -211,21 +303,310 @@ void InputRackLookAndFeel::positionComboBoxText(juce::ComboBox& box, juce::Label
     label.setFont(juce::FontOptions(13.0f));
 }
 
+class MainComponent::PluginBrowserComponent final : public juce::Component,
+                                                    private juce::ListBoxModel {
+public:
+    explicit PluginBrowserComponent(MainComponent& ownerIn)
+        : owner(ownerIn), results("Available effects", this), add("Add effect")
+    {
+        for (auto* component : std::initializer_list<juce::Component*>{
+                 &owner.pluginSearch, &owner.pluginSort, &owner.scan, &results, &add})
+            addAndMakeVisible(component);
+        owner.activePluginBrowser = this;
+        results.setRowHeight(30);
+        results.setOutlineThickness(1);
+        results.setColour(juce::ListBox::outlineColourId, juce::Colour(border));
+        results.setColour(juce::ListBox::backgroundColourId, juce::Colour(0xff0b0e13));
+        add.setComponentID("primary");
+        add.onClick = [this] { addRow(results.getSelectedRow()); };
+        jumpToInitial();
+        setSize(560, 430);
+    }
+
+    ~PluginBrowserComponent() override
+    {
+        if (owner.activePluginBrowser == this) owner.activePluginBrowser = nullptr;
+    }
+
+    void refreshResults()
+    {
+        results.updateContent();
+        jumpToInitial();
+        repaint();
+    }
+
+    void paint(juce::Graphics& g) override
+    {
+        g.fillAll(juce::Colour(surface));
+        drawCaption(g, "ADD VST3 EFFECT", {18, 12, getWidth() - 36, 18}, juce::Colour(accent));
+        drawCaption(g, "SORT BY", {18, 82, 78, 18}, juce::Colour(textFaint), 9.0f);
+        g.setColour(juce::Colour(textMuted));
+        g.setFont(juce::FontOptions(11.0f));
+        g.drawText(juce::String(owner.visiblePlugins.size()) + " effects available - type one initial to jump",
+                   18, getHeight() - 29, getWidth() - 36, 18,
+                   juce::Justification::centredLeft);
+    }
+
+    void resized() override
+    {
+        owner.pluginSearch.setBounds(18, 38, getWidth() - 36, 36);
+        owner.pluginSort.setBounds(96, 80, 174, 34);
+        owner.scan.setBounds(getWidth() - 148, 80, 130, 34);
+        results.setBounds(18, 126, getWidth() - 36, getHeight() - 174);
+        add.setBounds(getWidth() - 130, getHeight() - 39, 112, 32);
+    }
+
+private:
+    int getNumRows() override { return owner.visiblePlugins.size(); }
+
+    void paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected) override
+    {
+        if (!juce::isPositiveAndBelow(row, owner.visiblePlugins.size())) return;
+        if (selected) g.fillAll(juce::Colour(accent).withAlpha(0.12f));
+        const auto& plugin = owner.visiblePlugins.getReference(row);
+        g.setColour(juce::Colour(text));
+        g.setFont(juce::FontOptions(12.5f, juce::Font::bold));
+        g.drawFittedText(plugin.name, 12, 2, width - 190, height - 4,
+                         juce::Justification::centredLeft, 1);
+        g.setColour(juce::Colour(textMuted));
+        g.setFont(juce::FontOptions(10.5f));
+        const auto details = plugin.manufacturerName + "  -  "
+            + (plugin.category.isNotEmpty() ? plugin.category : "VST3");
+        g.drawFittedText(details, width - 178, 2, 164, height - 4,
+                         juce::Justification::centredRight, 1);
+    }
+
+    void listBoxItemDoubleClicked(int row, const juce::MouseEvent&) override { addRow(row); }
+
+    void jumpToInitial()
+    {
+        const auto query = owner.pluginSearch.getText().trim();
+        if (query.length() != 1 || !juce::CharacterFunctions::isLetter(query[0])) return;
+        const auto row = inputrack::findPluginByInitial(owner.visiblePlugins, query[0]);
+        if (row < 0) return;
+        results.selectRow(row);
+        results.scrollToEnsureRowIsOnscreen(row);
+    }
+
+    void addRow(int row)
+    {
+        if (!juce::isPositiveAndBelow(row, owner.visiblePlugins.size())) return;
+        owner.addPluginAtVisibleIndex(row);
+        if (auto* callout = findParentComponentOfClass<juce::CallOutBox>()) callout->dismiss();
+    }
+
+    MainComponent& owner;
+    juce::ListBox results;
+    juce::TextButton add;
+};
+
+class MainComponent::PluginRowComponent final : public juce::Component,
+                                                 private juce::Timer {
+public:
+    PluginRowComponent(MainComponent& ownerIn, int rowIn)
+        : owner(ownerIn), row(rowIn), power("ON"), menu("...")
+    {
+        addAndMakeVisible(power);
+        addAndMakeVisible(menu);
+        power.setComponentID("secondary");
+        menu.setComponentID("secondary");
+        power.onClick = [this] { owner.togglePluginBypass(row); };
+        menu.onClick = [this] { showMenu(); };
+
+        for (int i = 0; i < 3; ++i) {
+            auto slider = std::make_unique<juce::Slider>();
+            slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+            slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 66, 16);
+            slider->setRange(0.0, 1.0, 0.0001);
+            slider->setColour(juce::Slider::rotarySliderFillColourId, juce::Colour(accent));
+            slider->setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colour(border));
+            slider->setColour(juce::Slider::textBoxTextColourId, juce::Colour(textMuted));
+            slider->setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+            slider->setColour(juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+            addAndMakeVisible(*slider);
+            knobs.push_back(std::move(slider));
+
+            auto label = std::make_unique<juce::Label>();
+            label->setColour(juce::Label::textColourId, juce::Colour(textFaint));
+            label->setFont(juce::FontOptions(9.0f));
+            label->setJustificationType(juce::Justification::centred);
+            addAndMakeVisible(*label);
+            knobLabels.push_back(std::move(label));
+        }
+        bindParameters();
+        startTimerHz(12);
+    }
+
+    void setRow(int newRow)
+    {
+        if (row == newRow) return;
+        row = newRow;
+        bindParameters();
+    }
+
+    void setSelected(bool shouldBeSelected)
+    {
+        if (selected == shouldBeSelected) return;
+        selected = shouldBeSelected;
+        repaint();
+    }
+
+    void paint(juce::Graphics& g) override
+    {
+        auto card = getLocalBounds().toFloat().reduced(4.0f, 3.0f);
+        g.setColour(selected ? juce::Colour(accent).withAlpha(0.075f)
+                             : juce::Colour(surfaceRaised));
+        g.fillRoundedRectangle(card, 9.0f);
+        g.setColour(selected ? juce::Colour(accent).withAlpha(0.42f) : juce::Colour(border));
+        g.drawRoundedRectangle(card.reduced(0.5f), 9.0f, 1.0f);
+
+        auto* plugin = owner.engine.pluginAt(row);
+        if (plugin == nullptr) return;
+        g.setColour(juce::Colour(textFaint));
+        g.setFont(juce::FontOptions(11.0f));
+        g.drawText(juce::String(row + 1), 13, 0, 22, getHeight(), juce::Justification::centred);
+
+        g.setColour(juce::Colour(text));
+        g.setFont(juce::FontOptions(13.0f, juce::Font::bold));
+        g.drawFittedText(plugin->getName(), 88, 19, 190, 20,
+                         juce::Justification::centredLeft, 1);
+        drawCaption(g, "VST3  " + juce::String(owner.engine.pluginInputChannelCountAt(row))
+                           + " -> " + juce::String(owner.engine.pluginOutputChannelCountAt(row)),
+                    {88, 41, 190, 16}, juce::Colour(textFaint), 8.5f);
+
+        g.setColour(juce::Colour(textFaint));
+        for (int y = 31; y <= 49; y += 6)
+            g.fillEllipse(42.0f, static_cast<float>(y), 2.0f, 2.0f);
+    }
+
+    void resized() override
+    {
+        power.setBounds(53, 22, 29, 38);
+        menu.setBounds(getWidth() - 42, 22, 30, 38);
+        const auto knobsRight = getWidth() - 50;
+        const auto knobsLeft = juce::jmax(285, knobsRight - 270);
+        const auto available = knobsRight - knobsLeft;
+        const auto width = available / 3;
+        for (int i = 0; i < static_cast<int>(knobs.size()); ++i) {
+            knobLabels[static_cast<size_t>(i)]->setBounds(knobsLeft + i * width, 5, width, 14);
+            knobs[static_cast<size_t>(i)]->setBounds(knobsLeft + i * width, 17, width, 58);
+        }
+    }
+
+    void mouseDown(const juce::MouseEvent&) override
+    {
+        owner.chainList.selectRow(row);
+    }
+
+    void mouseDoubleClick(const juce::MouseEvent&) override
+    {
+        owner.selectAndOpenPlugin(row);
+    }
+
+    void mouseDrag(const juce::MouseEvent& event) override
+    {
+        if (reorderPending || event.getDistanceFromDragStart() < 18) return;
+        const auto relative = event.getEventRelativeTo(&owner.chainList);
+        const auto target = owner.chainList.getRowContainingPosition(relative.x, relative.y);
+        if (target < 0 || target == row) return;
+        reorderPending = true;
+        const juce::Component::SafePointer<MainComponent> safeOwner(&owner);
+        const auto source = row;
+        juce::MessageManager::callAsync([safeOwner, source, target] {
+            if (safeOwner != nullptr) safeOwner->movePluginRow(source, target);
+        });
+    }
+
+private:
+    void bindParameters()
+    {
+        parameters.clear();
+        auto* plugin = owner.engine.pluginAt(row);
+        if (plugin != nullptr) {
+            for (auto* parameter : plugin->getParameters()) {
+                if (parameter != nullptr && !parameter->isMetaParameter()) parameters.push_back(parameter);
+                if (parameters.size() == knobs.size()) break;
+            }
+        }
+
+        for (size_t i = 0; i < knobs.size(); ++i) {
+            auto& slider = *knobs[i];
+            auto& label = *knobLabels[i];
+            const auto hasParameter = i < parameters.size();
+            slider.setVisible(hasParameter);
+            label.setVisible(hasParameter);
+            if (!hasParameter) continue;
+            auto* parameter = parameters[i];
+            label.setText(parameter->getName(18), juce::dontSendNotification);
+            slider.textFromValueFunction = [parameter](double value) {
+                return parameter->getText(static_cast<float>(value), 12);
+            };
+            slider.onDragStart = [parameter] { parameter->beginChangeGesture(); };
+            slider.onDragEnd = [parameter] { parameter->endChangeGesture(); };
+            slider.onValueChange = [&slider, parameter] {
+                parameter->setValueNotifyingHost(static_cast<float>(slider.getValue()));
+            };
+            slider.setValue(parameter->getValue(), juce::dontSendNotification);
+        }
+    }
+
+    void timerCallback() override
+    {
+        for (size_t i = 0; i < parameters.size(); ++i)
+            if (!knobs[i]->isMouseButtonDown())
+                knobs[i]->setValue(parameters[i]->getValue(), juce::dontSendNotification);
+        const auto bypassed = owner.engine.isBypassed(row);
+        power.setButtonText(bypassed ? "OFF" : "ON");
+        power.setComponentID(bypassed ? "secondary" : "primary");
+        power.repaint();
+    }
+
+    void showMenu()
+    {
+        juce::PopupMenu popup;
+        popup.addItem(1, "Open editor");
+        popup.addItem(2, owner.engine.isBypassed(row) ? "Enable effect" : "Bypass effect");
+        popup.addSeparator();
+        popup.addItem(3, "Move up", row > 0);
+        popup.addItem(4, "Move down", row + 1 < owner.engine.pluginCount());
+        popup.addSeparator();
+        popup.addItem(5, "Remove effect");
+        const juce::Component::SafePointer<MainComponent> safeOwner(&owner);
+        const auto selectedRow = row;
+        popup.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&menu),
+            [safeOwner, selectedRow](int result) {
+                if (safeOwner == nullptr) return;
+                if (result == 1) safeOwner->selectAndOpenPlugin(selectedRow);
+                else if (result == 2) safeOwner->togglePluginBypass(selectedRow);
+                else if (result == 3) safeOwner->movePluginRow(selectedRow, selectedRow - 1);
+                else if (result == 4) safeOwner->movePluginRow(selectedRow, selectedRow + 1);
+                else if (result == 5) safeOwner->removePluginRow(selectedRow);
+            });
+    }
+
+    MainComponent& owner;
+    int row{};
+    bool selected{};
+    bool reorderPending{};
+    juce::TextButton power, menu;
+    std::vector<std::unique_ptr<juce::Slider>> knobs;
+    std::vector<std::unique_ptr<juce::Label>> knobLabels;
+    std::vector<juce::AudioProcessorParameter*> parameters;
+};
+
 MainComponent::MainComponent()
     : juce::Thread("VST3 plug-in scanner"),
-      devices(engine.deviceManager(), 1, 1, 2, 2, false, false, true, false),
       updates(juce::JUCEApplication::getInstance()->getApplicationVersion(), pluginDataDirectory())
 {
     setLookAndFeel(&lookAndFeel);
     for (auto* component : std::initializer_list<juce::Component*>{
-             &devices, &availablePlugins, &pluginSort, &pluginSearch, &chainList, &scan, &remove,
-             &up, &down, &bypass, &open, &monitor, &globalBypass, &save, &load, &checkUpdates,
-             &installUpdate})
+             &inputDevice, &outputDevice, &chainList, &addEffect, &presets, &appMenu,
+             &monitor, &checkUpdates, &installUpdate})
         addAndMakeVisible(component);
 
     for (auto* button : std::initializer_list<juce::Button*>{
              &scan, &remove, &up, &down, &bypass, &open, &monitor, &globalBypass, &save, &load,
-             &checkUpdates, &installUpdate})
+             &addEffect, &presets, &appMenu, &checkUpdates, &installUpdate})
         button->addListener(this);
 
     scan.setComponentID("secondary");
@@ -235,31 +616,40 @@ MainComponent::MainComponent()
     installUpdate.setVisible(false);
     remove.setComponentID("danger");
     open.setComponentID("primary");
+    addEffect.setComponentID("secondary");
+    presets.setComponentID("secondary");
+    appMenu.setComponentID("secondary");
     monitor.setClickingTogglesState(true);
     monitor.setToggleState(engine.isMonitoringEnabled(), juce::dontSendNotification);
+    monitor.setButtonText(engine.isMonitoringEnabled() ? "Monitor on" : "Monitor off");
+    monitor.setComponentID(engine.isMonitoringEnabled() ? "primary" : "secondary");
     globalBypass.setClickingTogglesState(true);
     globalBypass.setToggleState(engine.isGloballyBypassed(), juce::dontSendNotification);
     globalBypass.setComponentID("secondary");
     engine.deviceManager().addChangeListener(this);
-    chainList.setRowHeight(56);
+    chainList.setRowHeight(82);
     chainList.setOutlineThickness(0);
     chainList.getViewport()->setScrollBarsShown(true, false);
-    availablePlugins.setTextWhenNothingSelected("Add a VST3 effect");
-    // Picking an effect is the whole gesture; there is nothing left to confirm.
-    availablePlugins.onChange = [this] { addSelectedPlugin(); };
-
     pluginSort.addItem("Name", 1);
     pluginSort.addItem("Manufacturer", 2);
     pluginSort.addItem("Category", 3);
     pluginSort.onChange = [this] { saveSettings(); refreshAvailablePlugins(); };
 
-    pluginSearch.setTextToShowWhenEmpty("Search effects", juce::Colour(textFaint));
+    pluginSearch.setTextToShowWhenEmpty("Type one initial to jump, e.g. C", juce::Colour(textFaint));
+    pluginSearch.setInputRestrictions(1, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
     pluginSearch.setColour(juce::TextEditor::backgroundColourId, juce::Colour(surfaceRaised));
     pluginSearch.setColour(juce::TextEditor::outlineColourId, juce::Colour(border));
     pluginSearch.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(accentDeep));
     pluginSearch.setColour(juce::TextEditor::textColourId, juce::Colour(text));
     pluginSearch.setColour(juce::TextEditor::highlightColourId, juce::Colour(accentDeep));
-    pluginSearch.onTextChange = [this] { refreshAvailablePlugins(); };
+    pluginSearch.onTextChange = [this] {
+        if (activePluginBrowser != nullptr) activePluginBrowser->refreshResults();
+    };
+
+    inputDevice.setTextWhenNothingSelected("Select microphone");
+    outputDevice.setTextWhenNothingSelected("Select output");
+    inputDevice.onChange = [this] { selectInputDevice(); };
+    outputDevice.onChange = [this] { selectOutputDevice(); };
 
     status.setText("Select a microphone, scan VST3 plug-ins, then build your rack.",
                    juce::dontSendNotification);
@@ -276,12 +666,13 @@ MainComponent::MainComponent()
     const auto error = engine.initialiseAudio();
     if (error.isNotEmpty()) status.setText("Audio: " + error, juce::dontSendNotification);
     else status.setText(routingStatus(), juce::dontSendNotification);
+    refreshDeviceSelectors();
     recoverFromUncleanShutdown();
     pluginDataDirectory().createDirectory();
     crashMarkerFile().create();
-    startTimerHz(10);
+    startTimerHz(20);
     if (updates.isDueForAutomaticCheck()) startUpdateCheck(false);
-    setSize(1180, 780);
+    setSize(1180, 720);
 }
 
 MainComponent::~MainComponent()
@@ -311,34 +702,30 @@ void MainComponent::paint(juce::Graphics& g)
 
     drawCard(g, inputPanel.toFloat());
     drawCard(g, chainPanel.toFloat());
+    drawCard(g, outputPanel.toFloat());
 
-    drawCaption(g, "AUDIO INPUT", inputPanel.reduced(16, 0).withY(inputPanel.getY() + 15).withHeight(18),
-                juce::Colour(textFaint));
+    drawCaption(g, "INPUT", inputPanel.reduced(14, 0).withY(inputPanel.getY() + 15).withHeight(18),
+                juce::Colour(accent));
     drawCaption(g, "EFFECT CHAIN", chainPanel.reduced(16, 0).withY(chainPanel.getY() + 15).withHeight(18),
-                juce::Colour(textFaint));
+                juce::Colour(accent));
+    drawCaption(g, "OUTPUT", outputPanel.reduced(14, 0).withY(outputPanel.getY() + 15).withHeight(18),
+                juce::Colour(accent));
 
-    // Input/output level meters, with the output bar turning red while the
-    // safety limiter is actively clamping over-scale samples.
-    {
-        auto area = meterArea;
-        auto inRow = area.removeFromTop(13);
-        area.removeFromTop(4);
-        auto outRow = area.removeFromTop(13);
+    drawVerticalMeter(g, inputMeterArea, inputMeterDisplay, false, false);
+    const auto clipping = clipIndicatorTicksRemaining > 0;
+    drawVerticalMeter(g, outputMeterArea, outputMeterDisplay, clipping, true);
+    if (clipping)
+        drawStatePill(g, "CLIP", outputMeterArea.withTrimmedLeft(outputMeterArea.getWidth() - 54)
+                                      .withHeight(20).toFloat(),
+                      juce::Colour(danger), 0.22f);
 
-        drawCaption(g, "IN", inRow.removeFromLeft(24), juce::Colour(textFaint), 9.0f);
-        drawLevelBar(g, inRow.toFloat(),
-                    juce::jmax(inputMeterDisplay[0], inputMeterDisplay[1]), false);
-
-        auto outLabelArea = outRow.removeFromLeft(24);
-        auto clipPill = outRow.removeFromRight(46);
-        outRow.removeFromRight(6);
-        drawCaption(g, "OUT", outLabelArea, juce::Colour(textFaint), 9.0f);
-        const auto clipping = clipIndicatorTicksRemaining > 0;
-        drawLevelBar(g, outRow.toFloat(),
-                    juce::jmax(outputMeterDisplay[0], outputMeterDisplay[1]), clipping);
-        drawStatePill(g, "CLIP", clipPill.toFloat(),
-                     clipping ? juce::Colour(0xffe0505a) : juce::Colour(textFaint),
-                     clipping ? 0.22f : 0.10f);
+    if (engine.pluginCount() == 0) {
+        g.setColour(juce::Colour(border));
+        g.drawRoundedRectangle(chainList.getBounds().toFloat().reduced(5.0f), 9.0f, 1.0f);
+        g.setColour(juce::Colour(textMuted));
+        g.setFont(juce::FontOptions(12.0f));
+        g.drawText("Drop an effect here or choose Add Effect", chainList.getBounds(),
+                   juce::Justification::centred);
     }
 
     // Status strip
@@ -348,77 +735,81 @@ void MainComponent::paint(juce::Graphics& g)
     g.setColour(running ? juce::Colour(accent) : juce::Colour(textFaint));
     g.fillEllipse(static_cast<float>(statusTextArea.getX() - 16),
                   static_cast<float>(statusStrip.getCentreY()) - 3.0f, 6.0f, 6.0f);
+
+    auto device = engine.deviceManager().getCurrentAudioDevice();
+    const auto sampleRate = device != nullptr ? device->getCurrentSampleRate() : 0.0;
+    const auto bufferSize = device != nullptr ? device->getCurrentBufferSizeSamples() : 0;
+    g.setColour(juce::Colour(running ? accent : textFaint));
+    g.setFont(juce::FontOptions(9.5f, juce::Font::bold));
+    g.drawText(running ? "RUNNING" : "STOPPED", statusStrip.getX() + 24,
+               statusStrip.getY(), 64, statusStrip.getHeight(), juce::Justification::centredLeft);
+    g.setColour(juce::Colour(textMuted));
+    g.setFont(juce::FontOptions(10.5f));
+    const auto technical = juce::String(sampleRate / 1000.0, 1) + " kHz   "
+        + juce::String(bufferSize) + " samples   VST3";
+    g.drawText(technical, statusStrip.getX() + 96, statusStrip.getY(), 190,
+               statusStrip.getHeight(), juce::Justification::centredLeft);
 }
 
 void MainComponent::resized()
 {
     auto area = getLocalBounds();
 
-    statusStrip = area.removeFromBottom(38);
+    statusStrip = area.removeFromBottom(42);
     auto strip = statusStrip.reduced(12, 5);
-    checkUpdates.setBounds(strip.removeFromLeft(146));
+    strip.removeFromLeft(284);
+    monitor.setBounds(strip.removeFromRight(112));
+    strip.removeFromRight(8);
+    checkUpdates.setBounds(strip.removeFromRight(142));
     if (installUpdate.isVisible()) {
-        strip.removeFromLeft(8);
-        installUpdate.setBounds(strip.removeFromLeft(158));
+        strip.removeFromRight(8);
+        installUpdate.setBounds(strip.removeFromRight(158));
     }
-    statusTextArea = strip.withTrimmedLeft(24).withTrimmedRight(8);
+    statusTextArea = strip.withTrimmedLeft(8).withTrimmedRight(8);
     status.setBounds(statusTextArea);
 
-    auto body = area.reduced(18);
-    inputPanel = body.removeFromLeft(374);
-    body.removeFromLeft(16);
+    auto body = area.reduced(14, 12);
+    const auto sideWidth = juce::jlimit(208, 248, body.getWidth() / 5);
+    inputPanel = body.removeFromLeft(sideWidth);
+    body.removeFromLeft(12);
+    outputPanel = body.removeFromRight(sideWidth);
+    body.removeFromRight(12);
     chainPanel = body;
 
-    // Left panel: the device selector keeps its natural height so the controls
-    // stay grouped with it instead of drifting to the bottom.
-    auto inputInner = inputPanel.reduced(16, 15);
-    inputInner.removeFromTop(26);
-    devices.setBounds(inputInner.removeFromTop(juce::jmin(272, inputInner.getHeight())));
-
-    inputInner.removeFromTop(4);
-    auto controlRow = inputInner.removeFromTop(38);
-    scan.setBounds(controlRow.removeFromLeft(112));
-    controlRow.removeFromLeft(8);
-    monitor.setBounds(controlRow.removeFromLeft(120));
-    controlRow.removeFromLeft(8);
-    globalBypass.setBounds(controlRow);
-
+    auto inputInner = inputPanel.reduced(12, 14);
+    inputInner.removeFromTop(28);
+    inputDevice.setBounds(inputInner.removeFromTop(38));
     inputInner.removeFromTop(10);
-    meterArea = inputInner.removeFromTop(30);
+    inputMeterArea = inputInner;
 
-    // Right panel: plug-in picker on the caption row, actions along the bottom.
-    auto chainInner = chainPanel.reduced(16, 15);
-    auto headerRow = chainInner.removeFromTop(34);
-    // The caption is painted at a fixed position, so its width stays reserved.
-    pluginSearch.setBounds(headerRow.removeFromRight(juce::jmin(360, headerRow.getWidth() - 120))
-                               .reduced(0, 3));
+    auto outputInner = outputPanel.reduced(12, 14);
+    outputInner.removeFromTop(28);
+    outputDevice.setBounds(outputInner.removeFromTop(38));
+    outputInner.removeFromTop(10);
+    outputMeterArea = outputInner;
 
-    auto pickerRow = chainInner.removeFromTop(32);
-    availablePlugins.setBounds(pickerRow.removeFromRight(juce::jmin(300, pickerRow.getWidth() - 160))
-                                   .reduced(0, 2));
-    pickerRow.removeFromRight(8);
-    pluginSort.setBounds(pickerRow.removeFromRight(150).reduced(0, 2));
-    chainInner.removeFromTop(12);
-
-    auto actionRow = chainInner.removeFromBottom(38);
-    load.setBounds(actionRow.removeFromRight(112));
-    actionRow.removeFromRight(8);
-    save.setBounds(actionRow.removeFromRight(112));
-    up.setBounds(actionRow.removeFromLeft(62));
-    actionRow.removeFromLeft(8);
-    down.setBounds(actionRow.removeFromLeft(70));
-    actionRow.removeFromLeft(8);
-    bypass.setBounds(actionRow.removeFromLeft(84));
-    actionRow.removeFromLeft(8);
-    remove.setBounds(actionRow.removeFromLeft(88));
-    actionRow.removeFromLeft(8);
-    open.setBounds(actionRow.removeFromLeft(116));
-
-    chainInner.removeFromBottom(14);
+    auto chainInner = chainPanel.reduced(10, 14);
+    auto headerRow = chainInner.removeFromTop(40);
+    appMenu.setBounds(headerRow.removeFromRight(36).reduced(0, 2));
+    headerRow.removeFromRight(6);
+    presets.setBounds(headerRow.removeFromRight(82).reduced(0, 2));
+    headerRow.removeFromRight(6);
+    addEffect.setBounds(headerRow.removeFromRight(112).reduced(0, 2));
+    chainInner.removeFromTop(6);
     chainList.setBounds(chainInner);
 }
 
 int MainComponent::getNumRows() { return engine.pluginCount(); }
+
+juce::Component* MainComponent::refreshComponentForRow(int row, bool selected,
+                                                        juce::Component* existing)
+{
+    auto* component = dynamic_cast<PluginRowComponent*>(existing);
+    if (component == nullptr) component = new PluginRowComponent(*this, row);
+    component->setRow(row);
+    component->setSelected(selected);
+    return component;
+}
 
 void MainComponent::paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected)
 {
@@ -461,13 +852,15 @@ void MainComponent::timerCallback()
     // meter that jumps straight back to zero between polls.
     for (int channel = 0; channel < 2; ++channel) {
         inputMeterDisplay[channel] = juce::jmax(engine.consumeInputPeak(channel),
-                                                inputMeterDisplay[channel] * 0.7f);
+                                                inputMeterDisplay[channel] * 0.84f);
         outputMeterDisplay[channel] = juce::jmax(engine.consumeOutputPeak(channel),
-                                                 outputMeterDisplay[channel] * 0.7f);
+                                                 outputMeterDisplay[channel] * 0.84f);
     }
     if (engine.consumeOutputClipped()) clipIndicatorTicksRemaining = 10;
     else if (clipIndicatorTicksRemaining > 0) --clipIndicatorTicksRemaining;
-    repaint(meterArea);
+    repaint(inputMeterArea);
+    repaint(outputMeterArea);
+    repaint(statusStrip);
 
     if (isThreadRunning()) {
         juce::String current;
@@ -483,7 +876,6 @@ void MainComponent::timerCallback()
     if (scanFinished.exchange(false)) {
         refreshAvailablePlugins();
         scan.setEnabled(true);
-        availablePlugins.setEnabled(true);
         const auto skipped = engine.knownPlugins().getBlacklistedFiles().size();
         auto message = juce::String(engine.knownPlugins().getNumTypes())
             + " VST3 plug-ins found and saved.";
@@ -498,7 +890,10 @@ void MainComponent::timerCallback()
 void MainComponent::buttonClicked(juce::Button* button)
 {
     const int row = chainList.getSelectedRow();
-    if (button == &scan) scanPlugins();
+    if (button == &addEffect) showPluginBrowser();
+    else if (button == &presets) showPresetMenu();
+    else if (button == &appMenu) showApplicationMenu();
+    else if (button == &scan) scanPlugins();
     else if (button == &remove && row >= 0) {
         editorWindow.reset();
         editorPlugin = nullptr;
@@ -535,6 +930,140 @@ void MainComponent::buttonClicked(juce::Button* button)
     else if (button == &load) loadPreset();
 }
 
+void MainComponent::refreshDeviceSelectors()
+{
+    refreshingDeviceSelectors = true;
+    inputDevice.clear(juce::dontSendNotification);
+    outputDevice.clear(juce::dontSendNotification);
+
+    auto& manager = engine.deviceManager();
+    if (auto* type = manager.getCurrentDeviceTypeObject()) {
+        type->scanForDevices();
+        const auto inputs = type->getDeviceNames(true);
+        const auto outputs = type->getDeviceNames(false);
+        for (int i = 0; i < inputs.size(); ++i) inputDevice.addItem(inputs[i], i + 1);
+        for (int i = 0; i < outputs.size(); ++i) outputDevice.addItem(outputs[i], i + 1);
+
+        juce::AudioDeviceManager::AudioDeviceSetup setup;
+        manager.getAudioDeviceSetup(setup);
+        inputDevice.setText(setup.inputDeviceName, juce::dontSendNotification);
+        outputDevice.setText(setup.outputDeviceName, juce::dontSendNotification);
+    }
+    refreshingDeviceSelectors = false;
+}
+
+void MainComponent::selectInputDevice()
+{
+    if (refreshingDeviceSelectors || inputDevice.getText().isEmpty()) return;
+    juce::AudioDeviceManager::AudioDeviceSetup setup;
+    engine.deviceManager().getAudioDeviceSetup(setup);
+    if (setup.inputDeviceName == inputDevice.getText()) return;
+    setup.inputDeviceName = inputDevice.getText();
+    setup.inputChannels.clear();
+    setup.inputChannels.setBit(0);
+    const auto error = engine.deviceManager().setAudioDeviceSetup(setup, true);
+    if (error.isNotEmpty()) showError("Input device unavailable", error);
+    refreshDeviceSelectors();
+    status.setText(routingStatus(), juce::dontSendNotification);
+}
+
+void MainComponent::selectOutputDevice()
+{
+    if (refreshingDeviceSelectors || outputDevice.getText().isEmpty()) return;
+    juce::AudioDeviceManager::AudioDeviceSetup setup;
+    engine.deviceManager().getAudioDeviceSetup(setup);
+    if (setup.outputDeviceName == outputDevice.getText()) return;
+    setup.outputDeviceName = outputDevice.getText();
+    setup.outputChannels.clear();
+    setup.outputChannels.setRange(0, inputrack::PluginChainEngine::outputChannelCount, true);
+    const auto error = engine.deviceManager().setAudioDeviceSetup(setup, true);
+    if (error.isNotEmpty()) showError("Output device unavailable", error);
+    refreshDeviceSelectors();
+    status.setText(routingStatus(), juce::dontSendNotification);
+}
+
+void MainComponent::showPluginBrowser()
+{
+    refreshAvailablePlugins();
+    auto content = std::make_unique<PluginBrowserComponent>(*this);
+    auto& callout = juce::CallOutBox::launchAsynchronously(
+        std::move(content), addEffect.getBounds(), this);
+    callout.setDismissalMouseClicksAreAlwaysConsumed(true);
+    pluginSearch.grabKeyboardFocus();
+}
+
+void MainComponent::showPresetMenu()
+{
+    juce::PopupMenu popup;
+    popup.addItem(1, "Save preset...");
+    popup.addItem(2, "Load preset...");
+    const juce::Component::SafePointer<MainComponent> safeThis(this);
+    popup.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&presets),
+        [safeThis](int result) {
+            if (safeThis == nullptr) return;
+            if (result == 1) safeThis->savePreset();
+            else if (result == 2) safeThis->loadPreset();
+        });
+}
+
+void MainComponent::showApplicationMenu()
+{
+    juce::PopupMenu popup;
+    popup.addItem(1, engine.isGloballyBypassed() ? "Enable all effects" : "Bypass all effects");
+    popup.addItem(2, "Scan VST3 effects...");
+    popup.addSeparator();
+    popup.addItem(3, "Check for updates");
+    const juce::Component::SafePointer<MainComponent> safeThis(this);
+    popup.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&appMenu),
+        [safeThis](int result) {
+            if (safeThis == nullptr) return;
+            if (result == 1) {
+                const auto bypassed = !safeThis->engine.isGloballyBypassed();
+                safeThis->engine.setGloballyBypassed(bypassed);
+                safeThis->globalBypass.setToggleState(bypassed, juce::dontSendNotification);
+                safeThis->chainList.repaint();
+            }
+            else if (result == 2) safeThis->showPluginBrowser();
+            else if (result == 3) safeThis->startUpdateCheck(true);
+        });
+}
+
+void MainComponent::selectAndOpenPlugin(int row)
+{
+    if (!juce::isPositiveAndBelow(row, engine.pluginCount())) return;
+    chainList.selectRow(row);
+    openSelectedPlugin();
+}
+
+void MainComponent::togglePluginBypass(int row)
+{
+    if (!juce::isPositiveAndBelow(row, engine.pluginCount())) return;
+    engine.setBypassed(row, !engine.isBypassed(row));
+    chainList.repaintRow(row);
+    persistRecoveryState();
+}
+
+void MainComponent::movePluginRow(int row, int destination)
+{
+    if (!juce::isPositiveAndBelow(row, engine.pluginCount())
+        || !juce::isPositiveAndBelow(destination, engine.pluginCount()) || row == destination)
+        return;
+    engine.movePlugin(row, destination);
+    refresh();
+    chainList.selectRow(destination);
+}
+
+void MainComponent::removePluginRow(int row)
+{
+    if (!juce::isPositiveAndBelow(row, engine.pluginCount())) return;
+    if (editorPlugin == engine.pluginAt(row)) {
+        editorWindow.reset();
+        editorPlugin = nullptr;
+    }
+    engine.removePlugin(row);
+    refresh();
+}
+
 void MainComponent::scanPlugins()
 {
     if (isThreadRunning()) return;
@@ -547,7 +1076,6 @@ void MainComponent::scanPlugins()
     engine.knownPlugins().setCustomScanner(
         std::make_unique<inputrack::IsolatedPluginScanner>(helper));
     scan.setEnabled(false);
-    availablePlugins.setEnabled(false);
     scanProgress.store(0.0f);
     scanFinished.store(false);
     status.setText("Preparing VST3 scan...", juce::dontSendNotification);
@@ -617,15 +1145,10 @@ void MainComponent::saveSettings() const
 
 void MainComponent::refreshAvailablePlugins()
 {
-    // clear() notifies by default, which would re-enter the add handler on
-    // every keystroke in the search field.
-    availablePlugins.clear(juce::dontSendNotification);
     const auto sort = selectedSort();
     visiblePlugins = inputrack::filterAndSortPlugins(engine.knownPlugins().getTypes(),
-                                                      pluginSearch.getText(), sort);
-    for (int i = 0; i < visiblePlugins.size(); ++i)
-        availablePlugins.addItem(inputrack::pluginDisplayName(visiblePlugins.getReference(i), sort),
-                                 i + 1);
+                                                      {}, sort);
+    if (activePluginBrowser != nullptr) activePluginBrowser->refreshResults();
 }
 
 void MainComponent::loadPluginCache()
@@ -641,16 +1164,12 @@ void MainComponent::savePluginCache()
         xml->writeTo(pluginCacheFile());
 }
 
-void MainComponent::addSelectedPlugin()
+void MainComponent::addPluginAtVisibleIndex(int index)
 {
-    const int index = availablePlugins.getSelectedId() - 1;
     if (!juce::isPositiveAndBelow(index, visiblePlugins.size())) return;
     juce::String error;
     if (!engine.addPlugin(visiblePlugins.getReference(index), error))
         showError("Could not load plug-in", error);
-    // Back to the resting caption, otherwise picking the same effect a second
-    // time is not a change and would never be reported.
-    availablePlugins.setSelectedId(0, juce::dontSendNotification);
     refresh();
 }
 
@@ -721,6 +1240,7 @@ void MainComponent::refresh()
 {
     chainList.updateContent();
     chainList.repaint();
+    repaint(chainPanel);
     persistRecoveryState();
 }
 
@@ -763,8 +1283,13 @@ void MainComponent::recoverFromUncleanShutdown()
  */
 void MainComponent::changeListenerCallback(juce::ChangeBroadcaster*)
 {
-    if (engine.deviceManager().getCurrentAudioDevice() != nullptr) return;
+    if (engine.deviceManager().getCurrentAudioDevice() != nullptr) {
+        refreshDeviceSelectors();
+        status.setText(routingStatus(), juce::dontSendNotification);
+        return;
+    }
     const auto error = engine.initialiseAudio();
+    refreshDeviceSelectors();
     status.setText(error.isNotEmpty() ? "Audio: " + error
                                        : "Input device changed. " + routingStatus(),
                    juce::dontSendNotification);

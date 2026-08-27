@@ -81,6 +81,17 @@ int main()
     expect(inputrack::pluginDisplayName(all[4], Sort::sortByManufacturer) == "Orphan Tool",
            "a missing manufacturer adds no empty prefix");
 
+    // The browser keeps the complete list and uses one initial only to jump.
+    const auto alphabetical = inputrack::filterAndSortPlugins(all, "", Sort::sortAlphabetically);
+    expect(inputrack::findPluginByInitial(alphabetical, 'p') == 3,
+           "a lowercase initial jumps to the first matching plug-in");
+    expect(inputrack::findPluginByInitial(alphabetical, 'N') == 1,
+           "the initial lookup ignores case");
+    expect(inputrack::findPluginByInitial(alphabetical, 'X') == -1,
+           "an absent initial leaves the selection unchanged");
+    expect(inputrack::findPluginByInitial(alphabetical, '1') == -1,
+           "only letters are accepted as initials");
+
     if (failures == 0) std::cout << "PluginBrowsingTests passed\n";
     return failures == 0 ? 0 : 1;
 }

@@ -65,4 +65,13 @@ juce::String pluginDisplayName(const juce::PluginDescription& plugin,
     const auto group = groupingField(plugin, sort);
     return group.isEmpty() ? plugin.name : group + " - " + plugin.name;
 }
+
+int findPluginByInitial(const juce::Array<juce::PluginDescription>& plugins, juce::juce_wchar initial)
+{
+    if (!juce::CharacterFunctions::isLetter(initial)) return -1;
+    const auto prefix = juce::String::charToString(initial);
+    for (int i = 0; i < plugins.size(); ++i)
+        if (plugins.getReference(i).name.trimStart().startsWithIgnoreCase(prefix)) return i;
+    return -1;
+}
 }

@@ -33,11 +33,16 @@ public:
     void resized() override;
 
 private:
+    class PluginRowComponent;
+    class PluginBrowserComponent;
+
     int getNumRows() override;
     void paintListBoxItem(int row, juce::Graphics&, int width, int height, bool selected) override;
+    juce::Component* refreshComponentForRow(int row, bool selected,
+                                            juce::Component* existing) override;
     void buttonClicked(juce::Button*) override;
     void scanPlugins();
-    void addSelectedPlugin();
+    void addPluginAtVisibleIndex(int index);
     void openSelectedPlugin();
     void savePreset();
     void loadPreset();
@@ -58,15 +63,28 @@ private:
     void changeListenerCallback(juce::ChangeBroadcaster*) override;
     void persistRecoveryState() const;
     void recoverFromUncleanShutdown();
+    void refreshDeviceSelectors();
+    void selectInputDevice();
+    void selectOutputDevice();
+    void showPluginBrowser();
+    void showPresetMenu();
+    void showApplicationMenu();
+    void selectAndOpenPlugin(int row);
+    void togglePluginBypass(int row);
+    void movePluginRow(int row, int destination);
+    void removePluginRow(int row);
 
     inputrack::PluginChainEngine engine;
     InputRackLookAndFeel lookAndFeel;
-    juce::AudioDeviceSelectorComponent devices;
-    juce::ComboBox availablePlugins, pluginSort;
+    juce::ComboBox inputDevice, outputDevice;
+    juce::ComboBox pluginSort;
     juce::TextEditor pluginSearch;
     /** The picker contents in display order; ids index into this, not the scan. */
     juce::Array<juce::PluginDescription> visiblePlugins;
     juce::ListBox chainList{"Effect Rack", this};
+    juce::TextButton addEffect{"+  Add Effect"};
+    juce::TextButton presets{"Presets"};
+    juce::TextButton appMenu{"..."};
     juce::TextButton scan{"Scan VST3"}, remove{"Remove"};
     juce::TextButton up{"Up"}, down{"Down"}, bypass{"Bypass"}, open{"Open editor"};
     juce::TextButton monitor{"Monitor off"};
@@ -80,10 +98,13 @@ private:
     std::optional<inputrack::AvailableUpdate> availableUpdate;
 
     // Layout rectangles shared between resized() and paint().
-    juce::Rectangle<int> inputPanel, chainPanel, statusStrip, statusTextArea, meterArea;
+    juce::Rectangle<int> inputPanel, chainPanel, outputPanel, statusStrip, statusTextArea;
+    juce::Rectangle<int> inputMeterArea, outputMeterArea;
     float inputMeterDisplay[2]{};
     float outputMeterDisplay[2]{};
     int clipIndicatorTicksRemaining{};
+    bool refreshingDeviceSelectors{};
+    PluginBrowserComponent* activePluginBrowser{};
     std::atomic<float> scanProgress{};
     std::atomic<bool> scanFinished{};
     juce::CriticalSection scanStatusLock;

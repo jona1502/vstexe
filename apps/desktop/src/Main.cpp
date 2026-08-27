@@ -59,8 +59,8 @@ private:
             setUsingNativeTitleBar(true);
             setContentOwned(new MainComponent(), true);
             setResizable(true, false);
-            setResizeLimits(980, 680, 1600, 1050);
-            centreWithSize(1180, 780);
+            setResizeLimits(980, 640, 1600, 1050);
+            centreWithSize(1180, 720);
             setVisible(true);
             applyDarkTitleBar(*this);
         }

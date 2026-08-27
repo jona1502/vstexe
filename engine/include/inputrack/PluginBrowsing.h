@@ -22,4 +22,7 @@ juce::Array<juce::PluginDescription> filterAndSortPlugins(
  */
 juce::String pluginDisplayName(const juce::PluginDescription&,
                                juce::KnownPluginList::SortMethod);
+
+/** Returns the first row whose plug-in name begins with the supplied letter. */
+int findPluginByInitial(const juce::Array<juce::PluginDescription>&, juce::juce_wchar initial);
 }
