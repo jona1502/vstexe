@@ -2,17 +2,11 @@
 #include <inputrack/MeteringProcessor.h>
 
 namespace inputrack {
-namespace {
-juce::AudioProcessor::BusesProperties meteringBusProperties()
-{
-    return juce::AudioProcessor::BusesProperties()
-        .withInput("Input", juce::AudioChannelSet::stereo(), true)
-        .withOutput("Output", juce::AudioChannelSet::stereo(), true);
-}
-}
-
 MeteringProcessor::MeteringProcessor(bool applyClipProtection)
-    : AudioProcessor(meteringBusProperties()), clipProtection(applyClipProtection)
+    : AudioProcessor(BusesProperties()
+                         .withInput("Input", juce::AudioChannelSet::stereo(), true)
+                         .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+      clipProtection(applyClipProtection)
 {
 }
 

@@ -39,6 +39,7 @@ int main()
         // clamping the microphone signal before the chain would be wrong.
         Meter meter(false);
         juce::AudioBuffer<float> buffer(2, 4);
+        buffer.clear();
         buffer.setSample(0, 0, 0.5f);
         buffer.setSample(0, 1, -1.5f);
         buffer.setSample(1, 0, 0.25f);

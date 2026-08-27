@@ -77,6 +77,10 @@ PluginChainEngine::PluginChainEngine()
     formats.addDefaultFormats();
     virtualMicrophone = VirtualMicrophone::createPlatformBackend();
     graph = std::make_unique<juce::AudioProcessorGraph>();
+    // Give the graph its fixed rack layout before any nodes are connected.
+    // AudioProcessorPlayer will apply the real device block size later, while
+    // this also keeps graph edits valid before a device has been opened.
+    graph->setPlayConfigDetails(inputChannelCount, outputChannelCount, sampleRate, 256);
     inputNode = graph->addNode(std::make_unique<juce::AudioProcessorGraph::AudioGraphIOProcessor>(
         juce::AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode));
     inputUpmixNode = graph->addNode(

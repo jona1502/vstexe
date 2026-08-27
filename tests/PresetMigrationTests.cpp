@@ -53,7 +53,7 @@ int main()
         R"({"_type":"inputRack","properties":{"schemaVersion":1,"name":"Streaming Voice",)"
         R"("futureRootFlag":true},"children":[{"_type":"plugin","properties":{)"
         R"("name":"Compressor","manufacturer":"InputRack","fileOrIdentifier":"comp",)"
-        R"("uniqueId":1,"deprecatedUid":0,"format":"VST3","bypassed":false,"state":"",)"
+        R"("uniqueId":1,"deprecatedUid":0,"format":"VST3","bypassed":false,"state":"0.",)"
         R"("futurePluginField":"ignored"},"children":[]}]})";
     const auto forwardTolerant = inputrack::ChainState::fromJson(forwardTolerantJson);
     expect(forwardTolerant.size() == 1,
@@ -65,7 +65,7 @@ int main()
     // rewrite it to whatever the current build happens to be.
     inputrack::ChainState state;
     const auto roundTripped = inputrack::ChainState::fromJson(state.toJson());
-    expect(roundTripped.valueTree().getProperty("schemaVersion")
+    expect(static_cast<int>(roundTripped.valueTree().getProperty("schemaVersion"))
                == inputrack::ChainState::currentSchemaVersion,
            "the schema version round-trips unchanged");
 
