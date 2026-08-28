@@ -290,7 +290,10 @@ void InputRackLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& b
     const auto colour = isPrimary ? juce::Colour(onAccent) : juce::Colour(text);
     g.setColour(colour.withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f));
     g.setFont(juce::FontOptions(13.0f, isPrimary ? juce::Font::bold : juce::Font::plain));
-    g.drawFittedText(button.getButtonText(), button.getLocalBounds().reduced(10, 0),
+    // Ten points of breathing room suits a full-width button and swallows a
+    // narrow one whole, so the padding follows the width it is taken out of.
+    const auto padding = juce::jmin(10, button.getWidth() / 6);
+    g.drawFittedText(button.getButtonText(), button.getLocalBounds().reduced(padding, 0),
                      juce::Justification::centred, 1);
 }
 
