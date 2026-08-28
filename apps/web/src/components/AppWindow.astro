@@ -24,60 +24,14 @@ const meterTicks = [3, 0, -6, -12, -18, -24, -30, -42, -54, -60].map((db) => ({
 }));
 
 /**
- * A rotary sweeps 270 degrees, so its track starts 135 degrees round and the
- * pointer sits that far plus the value. Clockwise from three o'clock, which is
- * how SVG measures an angle.
+ * A row carries its name, its channel count and two buttons. Parameters are
+ * edited in the plug-in's own editor, so nothing here stands in for them.
  */
-const knobRadius = 15;
-const knobSweep = 0.75 * 2 * Math.PI * knobRadius;
-
-function pointer(value: number) {
-  const angle = ((135 + value * 270) * Math.PI) / 180;
-  return { x: 20 + 10.5 * Math.cos(angle), y: 20 + 10.5 * Math.sin(angle) };
-}
-
-// Three parameters per row, the most the rack exposes without an editor open.
 const chain = [
-  {
-    name: 'Noise Suppressor',
-    channels: '1 -> 2',
-    on: true,
-    knobs: [
-      { label: 'Threshold', text: '-38.0 dB', value: 0.44 },
-      { label: 'Reduction', text: '12.0 dB', value: 0.61 },
-      { label: 'Release', text: '120 ms', value: 0.35 },
-    ],
-  },
-  {
-    name: 'Channel EQ',
-    channels: '2 -> 2',
-    on: true,
-    knobs: [
-      { label: 'Low shelf', text: '-2.5 dB', value: 0.38 },
-      { label: 'Presence', text: '+3.0 dB', value: 0.68 },
-      { label: 'Air', text: '+1.5 dB', value: 0.57 },
-    ],
-  },
-  {
-    name: 'Compressor',
-    channels: '2 -> 2',
-    on: true,
-    knobs: [
-      { label: 'Ratio', text: '4.0 : 1', value: 0.5 },
-      { label: 'Attack', text: '8.0 ms', value: 0.22 },
-      { label: 'Makeup', text: '+4.0 dB', value: 0.66 },
-    ],
-  },
-  {
-    name: 'De-esser',
-    channels: '2 -> 2',
-    on: false,
-    knobs: [
-      { label: 'Frequency', text: '6.4 kHz', value: 0.72 },
-      { label: 'Amount', text: '5.0 dB', value: 0.41 },
-      { label: 'Range', text: '9.0 dB', value: 0.5 },
-    ],
-  },
+  { name: 'Noise Suppressor', channels: '1 -> 2', on: true },
+  { name: 'Channel EQ', channels: '2 -> 2', on: true },
+  { name: 'Compressor', channels: '2 -> 2', on: true },
+  { name: 'De-esser', channels: '2 -> 2', on: false },
 ];
 
 // Peak levels the meters are holding; the readout below each shows the loudest.
@@ -215,48 +169,6 @@ const outputPeakDb = [-10.8, -12.6];
                 <p class="font-mono text-[7px] font-bold tracking-[0.16em] text-mist-600">
                   VST3&nbsp; {plugin.channels}
                 </p>
-              </div>
-              <!-- The three knobs are the widest fixed part of a row. -->
-              <div class="hidden shrink-0 gap-1 sm:flex">
-                {plugin.knobs.map((knob) => (
-                  <div class="w-[58px] text-center">
-                    <p class="truncate text-[7px] leading-none text-mist-600">{knob.label}</p>
-                    <svg viewBox="0 0 40 40" class="mx-auto size-7" aria-hidden="true">
-                      <circle
-                        cx="20"
-                        cy="20"
-                        r={knobRadius}
-                        fill="none"
-                        stroke="#1c212c"
-                        stroke-width="3.5"
-                        stroke-linecap="round"
-                        stroke-dasharray={`${knobSweep} 999`}
-                        transform="rotate(135 20 20)"
-                      />
-                      <circle
-                        cx="20"
-                        cy="20"
-                        r={knobRadius}
-                        fill="none"
-                        stroke="#38dfe0"
-                        stroke-width="3.5"
-                        stroke-linecap="round"
-                        stroke-dasharray={`${knobSweep * knob.value} 999`}
-                        transform="rotate(135 20 20)"
-                      />
-                      <line
-                        x1="20"
-                        y1="20"
-                        x2={pointer(knob.value).x}
-                        y2={pointer(knob.value).y}
-                        stroke="#f2f5f8"
-                        stroke-width="1.6"
-                        stroke-linecap="round"
-                      />
-                    </svg>
-                    <p class="truncate text-[7px] leading-none text-mist-500">{knob.text}</p>
-                  </div>
-                ))}
               </div>
               <span
                 class="rounded-md border border-ink-700 bg-ink-800 px-1.5 py-2 text-[9px] leading-none text-mist-100"

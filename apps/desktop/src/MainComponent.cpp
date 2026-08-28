@@ -1,6 +1,5 @@
 #include "MainComponent.h"
 #include <inputrack/IsolatedPluginScanner.h>
-#include <vector>
 
 namespace {
 // Mirrors the design tokens in apps/web/src/styles/global.css so the app and
@@ -434,42 +433,17 @@ public:
         menu.setComponentID("secondary");
         power.onClick = [this] { owner.togglePluginBypass(row); };
         menu.onClick = [this] { showMenu(); };
-
-        for (int i = 0; i < 3; ++i) {
-            auto slider = std::make_unique<juce::Slider>();
-            slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-            slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 66, 16);
-            slider->setRange(0.0, 1.0, 0.0001);
-            slider->setColour(juce::Slider::rotarySliderFillColourId, juce::Colour(accent));
-            slider->setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colour(border));
-            slider->setColour(juce::Slider::textBoxTextColourId, juce::Colour(textMuted));
-            slider->setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-            slider->setColour(juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
-            addAndMakeVisible(*slider);
-            knobs.push_back(std::move(slider));
-
-            auto label = std::make_unique<juce::Label>();
-            label->setColour(juce::Label::textColourId, juce::Colour(textFaint));
-            label->setFont(juce::FontOptions(9.0f));
-            label->setJustificationType(juce::Justification::centred);
-            addAndMakeVisible(*label);
-            knobLabels.push_back(std::move(label));
-        }
-        bindParameters();
         startTimerHz(12);
     }
 
     /*
-     * Rebinding unconditionally, even when the index has not moved: the row a
-     * recycled component lands on is rarely the plug-in it was bound to. A
-     * component built for a row past the end of a short rack holds no
-     * parameters at all, and one that outlives a removal holds pointers into
-     * a plug-in that has already been destroyed.
+     * Repainting unconditionally, even when the index has not moved: the row a
+     * recycled component lands on is rarely the plug-in it last drew.
      */
     void setRow(int newRow)
     {
         row = newRow;
-        bindParameters();
+        repaint();
     }
 
     void setSelected(bool shouldBeSelected)
@@ -494,31 +468,27 @@ public:
         g.setFont(juce::FontOptions(11.0f));
         g.drawText(juce::String(row + 1), 13, 0, 22, getHeight(), juce::Justification::centred);
 
+        const auto nameWidth = juce::jmax(120, getWidth() - 88 - 60);
         g.setColour(juce::Colour(text));
         g.setFont(juce::FontOptions(13.0f, juce::Font::bold));
-        g.drawFittedText(plugin->getName(), 88, 19, 190, 20,
+        g.drawFittedText(plugin->getName(), 88, 12, nameWidth, 18,
                          juce::Justification::centredLeft, 1);
         drawCaption(g, "VST3  " + juce::String(owner.engine.pluginInputChannelCountAt(row))
                            + " -> " + juce::String(owner.engine.pluginOutputChannelCountAt(row)),
-                    {88, 41, 190, 16}, juce::Colour(textFaint), 8.5f);
+                    {88, 30, nameWidth, 14}, juce::Colour(textFaint), 8.5f);
 
+        // Drag handle.
         g.setColour(juce::Colour(textFaint));
-        for (int y = 31; y <= 49; y += 6)
+        for (int y = 18; y <= 36; y += 6)
             g.fillEllipse(42.0f, static_cast<float>(y), 2.0f, 2.0f);
     }
 
     void resized() override
     {
-        power.setBounds(53, 22, 29, 38);
-        menu.setBounds(getWidth() - 42, 22, 30, 38);
-        const auto knobsRight = getWidth() - 50;
-        const auto knobsLeft = juce::jmax(285, knobsRight - 270);
-        const auto available = knobsRight - knobsLeft;
-        const auto width = available / 3;
-        for (int i = 0; i < static_cast<int>(knobs.size()); ++i) {
-            knobLabels[static_cast<size_t>(i)]->setBounds(knobsLeft + i * width, 5, width, 14);
-            knobs[static_cast<size_t>(i)]->setBounds(knobsLeft + i * width, 17, width, 58);
-        }
+        const auto buttonHeight = 32;
+        const auto y = (getHeight() - buttonHeight) / 2;
+        power.setBounds(53, y, 29, buttonHeight);
+        menu.setBounds(getWidth() - 42, y, 30, buttonHeight);
     }
 
     void mouseDown(const juce::MouseEvent&) override
@@ -548,43 +518,8 @@ public:
     }
 
 private:
-    void bindParameters()
-    {
-        parameters.clear();
-        auto* plugin = owner.engine.pluginAt(row);
-        if (plugin != nullptr) {
-            for (auto* parameter : plugin->getParameters()) {
-                if (parameter != nullptr && !parameter->isMetaParameter()) parameters.push_back(parameter);
-                if (parameters.size() == knobs.size()) break;
-            }
-        }
-
-        for (size_t i = 0; i < knobs.size(); ++i) {
-            auto& slider = *knobs[i];
-            auto& label = *knobLabels[i];
-            const auto hasParameter = i < parameters.size();
-            slider.setVisible(hasParameter);
-            label.setVisible(hasParameter);
-            if (!hasParameter) continue;
-            auto* parameter = parameters[i];
-            label.setText(parameter->getName(18), juce::dontSendNotification);
-            slider.textFromValueFunction = [parameter](double value) {
-                return parameter->getText(static_cast<float>(value), 12);
-            };
-            slider.onDragStart = [parameter] { parameter->beginChangeGesture(); };
-            slider.onDragEnd = [parameter] { parameter->endChangeGesture(); };
-            slider.onValueChange = [&slider, parameter] {
-                parameter->setValueNotifyingHost(static_cast<float>(slider.getValue()));
-            };
-            slider.setValue(parameter->getValue(), juce::dontSendNotification);
-        }
-    }
-
     void timerCallback() override
     {
-        for (size_t i = 0; i < parameters.size(); ++i)
-            if (!knobs[i]->isMouseButtonDown())
-                knobs[i]->setValue(parameters[i]->getValue(), juce::dontSendNotification);
         const auto bypassed = owner.engine.isBypassed(row);
         power.setButtonText(bypassed ? "OFF" : "ON");
         power.setComponentID(bypassed ? "secondary" : "primary");
@@ -619,9 +554,6 @@ private:
     bool selected{};
     bool reorderPending{};
     juce::TextButton power, menu;
-    std::vector<std::unique_ptr<juce::Slider>> knobs;
-    std::vector<std::unique_ptr<juce::Label>> knobLabels;
-    std::vector<juce::AudioProcessorParameter*> parameters;
 };
 
 MainComponent::MainComponent()
@@ -651,7 +583,9 @@ MainComponent::MainComponent()
     monitor.setButtonText(engine.isMonitoringEnabled() ? "Monitor on" : "Monitor off");
     monitor.setComponentID(engine.isMonitoringEnabled() ? "primary" : "secondary");
     engine.deviceManager().addChangeListener(this);
-    chainList.setRowHeight(82);
+    // A row carries its name, its channel count and two buttons; nothing in it
+    // needs the height the parameter knobs used to ask for.
+    chainList.setRowHeight(56);
     chainList.setOutlineThickness(0);
     chainList.getViewport()->setScrollBarsShown(true, false);
     pluginSort.addItem("Name", 1);
