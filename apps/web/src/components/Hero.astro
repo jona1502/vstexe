@@ -1,7 +1,6 @@
 ---
 import { site } from '../data/site';
 import Button from './Button.astro';
-import GitHub from './icons/GitHub.astro';
 import Windows from './icons/Windows.astro';
 ---
 
@@ -24,10 +23,6 @@ import Windows from './icons/Windows.astro';
         <Button href={site.releases} size="lg" data-download-link>
           <Windows class="size-[15px]" />
           <span data-download-label>Download for Windows</span>
-        </Button>
-        <Button href={site.repo} variant="secondary" size="lg" external>
-          <GitHub class="size-[15px]" />
-          View source on GitHub
         </Button>
       </div>
 

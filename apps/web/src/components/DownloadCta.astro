@@ -1,7 +1,6 @@
 ---
 import { site } from '../data/site';
 import Button from './Button.astro';
-import GitHub from './icons/GitHub.astro';
 import Windows from './icons/Windows.astro';
 ---
 
@@ -32,10 +31,6 @@ import Windows from './icons/Windows.astro';
           <Windows class="size-[15px]" />
           <span data-download-label>Download for Windows</span>
         </Button>
-        <Button href={site.repo} variant="secondary" size="lg" external>
-          <GitHub class="size-[15px]" />
-          View source on GitHub
-        </Button>
       </div>
 
       <p class="relative mt-5 text-xs text-mist-600">
@@ -45,7 +40,7 @@ import Windows from './icons/Windows.astro';
       <p class="relative mt-3 max-w-md text-xs leading-relaxed text-mist-600">{site.previewNotice}</p>
 
       <p data-download-other hidden class="relative mt-3 max-w-md text-xs leading-relaxed text-mist-600">
-        Not on Windows? Fedora is built from source today — the commands are above.
+        InputRack is currently available for Windows 11 on x64 systems.
       </p>
     </div>
   </div>

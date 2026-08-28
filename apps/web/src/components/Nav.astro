@@ -1,7 +1,6 @@
 ---
 import { nav, site } from '../data/site';
 import Button from './Button.astro';
-import GitHub from './icons/GitHub.astro';
 ---
 
 <header
@@ -37,15 +36,6 @@ import GitHub from './icons/GitHub.astro';
     </nav>
 
     <div class="flex items-center gap-2">
-      <a
-        href={site.repo}
-        rel="noopener noreferrer"
-        target="_blank"
-        aria-label="GitHub repository"
-        class="hidden size-9 items-center justify-center rounded-full text-mist-500 transition-colors hover:bg-white/5 hover:text-mist-100 sm:flex"
-      >
-        <GitHub class="size-[18px]" />
-      </a>
       <Button href={site.releases} size="sm" data-download-link>Download</Button>
 
       <button

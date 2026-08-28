@@ -7,7 +7,6 @@ export const site = {
   tagline: 'Your input. Your effects. Everywhere.',
   description:
     'Route your physical microphone through your own 64-bit VST3 effects and send the processed signal wherever you need it, through a virtual audio cable.',
-  repo: 'https://github.com/jona1502/inputrack',
   releases: 'https://github.com/jona1502/inputrack/releases',
   releasesApi: 'https://api.github.com/repos/jona1502/inputrack/releases/latest',
   /**
@@ -23,7 +22,6 @@ export const site = {
 export const nav = [
   { label: 'Features', href: '#features' },
   { label: 'Signal path', href: '#signal-path' },
-  { label: 'Open source', href: site.repo, external: true },
 ] as const;
 
 /**
@@ -110,20 +108,9 @@ export const footerLinks = [
     ],
   },
   {
-    heading: 'Project',
+    heading: 'Download',
     links: [
-      { label: 'Source code', href: site.repo, external: true },
-      { label: 'Releases', href: site.releases, external: true },
-      { label: 'Architecture', href: `${site.repo}/blob/main/docs/ARCHITECTURE.md`, external: true },
-      { label: 'Windows virtual mic', href: `${site.repo}/blob/main/docs/WINDOWS_VIRTUAL_MIC.md`, external: true },
-    ],
-  },
-  {
-    heading: 'Support',
-    links: [
-      { label: 'Report an issue', href: `${site.repo}/issues`, external: true },
-      { label: 'Build from source', href: `${site.repo}#build`, external: true },
-      { label: 'Releasing & signing', href: `${site.repo}/blob/main/docs/RELEASING.md`, external: true },
+      { label: 'Windows releases', href: site.releases, external: true },
     ],
   },
   {
