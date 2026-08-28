@@ -55,6 +55,25 @@ juce::File crashMarkerFile()
     return pluginDataDirectory().getChildFile("session.lock");
 }
 
+/*
+ * PluginDirectoryScanner blacklists everything this file still names when it is
+ * constructed, on the assumption that a leftover entry marks a module that
+ * crashed the host. Clearing the blacklist therefore only sticks if the pedal
+ * is cleared with it.
+ */
+juce::File deadMansPedalFile()
+{
+    return pluginDataDirectory().getChildFile("inputrack-scan-dead-mans-pedal.txt");
+}
+
+/** A module identifier is a full path; the file name is what the user knows. */
+juce::String moduleDisplayName(const juce::String& fileOrIdentifier)
+{
+    const auto name =
+        juce::File::createFileWithoutCheckingPath(fileOrIdentifier).getFileName();
+    return name.isNotEmpty() ? name : fileOrIdentifier;
+}
+
 juce::File pluginScannerExecutable()
 {
     auto name = juce::String("InputRackPluginScanner");
@@ -876,14 +895,17 @@ void MainComponent::timerCallback()
     if (scanFinished.exchange(false)) {
         refreshAvailablePlugins();
         scan.setEnabled(true);
-        const auto skipped = engine.knownPlugins().getBlacklistedFiles().size();
         auto message = juce::String(engine.knownPlugins().getNumTypes())
             + " VST3 plug-ins found and saved.";
-        if (skipped > 0)
-            message += " " + juce::String(skipped) + " unsafe plug-in"
-                + (skipped == 1 ? " was" : "s were") + " skipped.";
-        status.setText(message,
-                       juce::dontSendNotification);
+        const auto blocked = blockedModules();
+        if (!blocked.isEmpty()) {
+            juce::StringArray names;
+            for (const auto& identifier : blocked)
+                names.add(moduleDisplayName(identifier));
+            message += " Skipped: " + names.joinIntoString(", ")
+                + ". Retry them from the ... menu.";
+        }
+        status.setText(message, juce::dontSendNotification);
     }
 }
 
@@ -1011,6 +1033,10 @@ void MainComponent::showApplicationMenu()
     juce::PopupMenu popup;
     popup.addItem(1, engine.isGloballyBypassed() ? "Enable all effects" : "Bypass all effects");
     popup.addItem(2, "Scan VST3 effects...");
+    const auto blocked = blockedModules();
+    popup.addItem(4, "Rescan " + juce::String(blocked.size()) + " skipped plug-in"
+                      + (blocked.size() == 1 ? "" : "s"),
+                  !blocked.isEmpty());
     popup.addSeparator();
     popup.addItem(3, "Check for updates");
     const juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -1025,6 +1051,7 @@ void MainComponent::showApplicationMenu()
             }
             else if (result == 2) safeThis->showPluginBrowser();
             else if (result == 3) safeThis->startUpdateCheck(true);
+            else if (result == 4) safeThis->rescanBlockedPlugins();
         });
 }
 
@@ -1073,13 +1100,39 @@ void MainComponent::scanPlugins()
                   "InputRackPluginScanner is missing. Reinstall InputRack and try again.");
         return;
     }
+    scanTimeouts->clear();
     engine.knownPlugins().setCustomScanner(
-        std::make_unique<inputrack::IsolatedPluginScanner>(helper));
+        std::make_unique<inputrack::IsolatedPluginScanner>(
+            helper, inputrack::IsolatedPluginScanner::defaultTimeoutMilliseconds,
+            scanTimeouts));
     scan.setEnabled(false);
     scanProgress.store(0.0f);
     scanFinished.store(false);
     status.setText("Preparing VST3 scan...", juce::dontSendNotification);
     startThread();
+}
+
+/** Everything a scan refused to hand over, whether it crashed or ran long. */
+juce::StringArray MainComponent::blockedModules()
+{
+    juce::StringArray blocked = engine.knownPlugins().getBlacklistedFiles();
+    blocked.mergeArray(scanTimeouts->files());
+    return blocked;
+}
+
+/*
+ * The blacklist is a permanent verdict written on a single bad scan, so it
+ * needs a way back. Forgetting the verdict and rescanning is that way: a module
+ * that really is broken lands on the blacklist again within the same run.
+ */
+void MainComponent::rescanBlockedPlugins()
+{
+    if (isThreadRunning()) return;
+    engine.knownPlugins().clearBlacklistedFiles();
+    scanTimeouts->clear();
+    deadMansPedalFile().deleteFile();
+    savePluginCache();
+    scanPlugins();
 }
 
 void MainComponent::run()
@@ -1089,9 +1142,7 @@ void MainComponent::run()
         auto* format = engine.formatManager().getFormat(i);
         if (format->getName() != "VST3") continue;
         juce::PluginDirectoryScanner scanner(engine.knownPlugins(), *format,
-            format->getDefaultLocationsToSearch(), true,
-            pluginDataDirectory()
-                .getChildFile("inputrack-scan-dead-mans-pedal.txt"));
+            format->getDefaultLocationsToSearch(), true, deadMansPedalFile());
         juce::String current;
         while (!threadShouldExit()) {
             {

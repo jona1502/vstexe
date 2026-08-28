@@ -1,4 +1,5 @@
 #pragma once
+#include <inputrack/IsolatedPluginScanner.h>
 #include <inputrack/PluginBrowsing.h>
 #include <inputrack/PluginChainEngine.h>
 #include <inputrack/UpdateChecker.h>
@@ -42,6 +43,8 @@ private:
                                             juce::Component* existing) override;
     void buttonClicked(juce::Button*) override;
     void scanPlugins();
+    void rescanBlockedPlugins();
+    juce::StringArray blockedModules();
     void addPluginAtVisibleIndex(int index);
     void openSelectedPlugin();
     void savePreset();
@@ -109,6 +112,8 @@ private:
     std::atomic<bool> scanFinished{};
     juce::CriticalSection scanStatusLock;
     juce::String pluginBeingScanned;
+    std::shared_ptr<inputrack::ScanTimeouts> scanTimeouts{
+        std::make_shared<inputrack::ScanTimeouts>()};
     std::unique_ptr<juce::FileChooser> chooser;
     std::unique_ptr<juce::DocumentWindow> editorWindow;
     juce::AudioPluginInstance* editorPlugin{};
