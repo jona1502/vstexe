@@ -830,39 +830,12 @@ juce::Component* MainComponent::refreshComponentForRow(int row, bool selected,
     return component;
 }
 
-void MainComponent::paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected)
-{
-    auto card = juce::Rectangle<float>(5.0f, 3.0f, static_cast<float>(width - 10),
-                                       static_cast<float>(height - 6));
-    g.setColour(selected ? juce::Colour(accent).withAlpha(0.07f) : juce::Colour(surfaceRaised));
-    g.fillRoundedRectangle(card, 10.0f);
-    g.setColour(selected ? juce::Colour(accent).withAlpha(0.38f) : juce::Colour(border));
-    g.drawRoundedRectangle(card.reduced(0.5f), 10.0f, 1.0f);
-
-    auto* plugin = engine.pluginAt(row);
-    if (plugin == nullptr) return;
-
-    const auto bypassed = engine.isBypassed(row);
-
-    g.setColour(juce::Colour(textFaint));
-    g.setFont(juce::FontOptions(11.0f));
-    g.drawText(juce::String(row + 1), 18, 0, 22, height, juce::Justification::centredLeft);
-
-    const auto textLeft = 44;
-    const auto textWidth = width - textLeft - 96;
-    g.setColour(juce::Colour(bypassed ? textMuted : text));
-    g.setFont(juce::FontOptions(13.5f, juce::Font::bold));
-    g.drawText(plugin->getName(), textLeft, 12, textWidth, 18, juce::Justification::centredLeft);
-    const auto channels = juce::String(engine.pluginInputChannelCountAt(row)) + " → "
-        + juce::String(engine.pluginOutputChannelCountAt(row));
-    drawCaption(g, channels + " VST3 EFFECT",
-                {textLeft, 29, textWidth, 14}, juce::Colour(textFaint), 9.0f);
-
-    const auto pill = juce::Rectangle<float>(static_cast<float>(width - 86),
-                                             static_cast<float>(height) * 0.5f - 10.0f, 62.0f, 20.0f);
-    if (bypassed) drawStatePill(g, "BYPASS", pill, juce::Colour(textMuted), 0.12f);
-    else drawStatePill(g, "ACTIVE", pill, juce::Colour(accent), 0.14f);
-}
+/*
+ * Every row is drawn by the PluginRowComponent that sits on top of this one,
+ * and that component's card is translucent while the row is selected, so
+ * anything painted here shows through it as a second, offset copy of the row.
+ */
+void MainComponent::paintListBoxItem(int, juce::Graphics&, int, int, bool) {}
 
 void MainComponent::timerCallback()
 {
