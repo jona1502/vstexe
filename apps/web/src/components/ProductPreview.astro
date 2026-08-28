@@ -30,7 +30,12 @@ const hasScreenshot = fs.existsSync(new URL(`../../public${screenshot}`, import.
                 class="w-full"
               />
             ) : (
-              <div class="aspect-[16/10] w-full sm:aspect-[16/9]">
+              <!--
+                The window is 1180x720. Below sm the side panels drop away and
+                the rack alone carries the frame, so the height follows the
+                content instead of a ratio that would clip it.
+              -->
+              <div class="w-full sm:aspect-[59/36]">
                 <AppWindow />
               </div>
             )

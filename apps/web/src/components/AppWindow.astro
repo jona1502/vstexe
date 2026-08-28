@@ -1,22 +1,93 @@
 ---
 /**
- * Faithful representation of the desktop window: every label below exists in
- * apps/desktop/src/MainComponent.cpp. Used until a real capture is dropped
- * into public/screenshots/app.png.
+ * Faithful representation of the desktop window: every label, panel and control
+ * below exists in apps/desktop/src/MainComponent.cpp, laid out in the same
+ * order and the same proportions. Used until a real capture is dropped into
+ * public/screenshots/app.png.
  */
+
+/**
+ * Both meters draw a -60..+3 dB scale, and a tick sits where its value falls on
+ * that scale rather than at an even interval: the gap between -42 and -30 is
+ * twice the gap between -30 and -24.
+ */
+const meterFloorDb = -60;
+const meterCeilingDb = 3;
+const meterSpan = meterCeilingDb - meterFloorDb;
+const fromTop = (db: number) => ((meterCeilingDb - db) / meterSpan) * 100;
+const fromBottom = (db: number) => ((db - meterFloorDb) / meterSpan) * 100;
+
+const meterTicks = [3, 0, -6, -12, -18, -24, -30, -42, -54, -60].map((db) => ({
+  db,
+  label: db > 0 ? `+${db}` : `${db}`,
+  top: fromTop(db),
+}));
+
+/**
+ * A rotary sweeps 270 degrees, so its track starts 135 degrees round and the
+ * pointer sits that far plus the value. Clockwise from three o'clock, which is
+ * how SVG measures an angle.
+ */
+const knobRadius = 15;
+const knobSweep = 0.75 * 2 * Math.PI * knobRadius;
+
+function pointer(value: number) {
+  const angle = ((135 + value * 270) * Math.PI) / 180;
+  return { x: 20 + 10.5 * Math.cos(angle), y: 20 + 10.5 * Math.sin(angle) };
+}
+
+// Three parameters per row, the most the rack exposes without an editor open.
 const chain = [
-  { name: 'Noise Suppressor', vendor: 'Your VST3 vendor', state: 'ACTIVE' },
-  { name: 'Channel EQ', vendor: 'Your VST3 vendor', state: 'ACTIVE' },
-  { name: 'Compressor', vendor: 'Your VST3 vendor', state: 'ACTIVE' },
-  { name: 'De-esser', vendor: 'Your VST3 vendor', state: 'BYPASS' },
+  {
+    name: 'Noise Suppressor',
+    channels: '1 -> 2',
+    on: true,
+    knobs: [
+      { label: 'Threshold', text: '-38.0 dB', value: 0.44 },
+      { label: 'Reduction', text: '12.0 dB', value: 0.61 },
+      { label: 'Release', text: '120 ms', value: 0.35 },
+    ],
+  },
+  {
+    name: 'Channel EQ',
+    channels: '2 -> 2',
+    on: true,
+    knobs: [
+      { label: 'Low shelf', text: '-2.5 dB', value: 0.38 },
+      { label: 'Presence', text: '+3.0 dB', value: 0.68 },
+      { label: 'Air', text: '+1.5 dB', value: 0.57 },
+    ],
+  },
+  {
+    name: 'Compressor',
+    channels: '2 -> 2',
+    on: true,
+    knobs: [
+      { label: 'Ratio', text: '4.0 : 1', value: 0.5 },
+      { label: 'Attack', text: '8.0 ms', value: 0.22 },
+      { label: 'Makeup', text: '+4.0 dB', value: 0.66 },
+    ],
+  },
+  {
+    name: 'De-esser',
+    channels: '2 -> 2',
+    on: false,
+    knobs: [
+      { label: 'Frequency', text: '6.4 kHz', value: 0.72 },
+      { label: 'Amount', text: '5.0 dB', value: 0.41 },
+      { label: 'Range', text: '9.0 dB', value: 0.5 },
+    ],
+  },
 ];
 
-const chainButtons = ['Up', 'Down', 'Bypass', 'Remove'];
+// Peak levels the meters are holding; the readout below each shows the loudest.
+const inputPeakDb = -9.4;
+const outputPeakDb = [-10.8, -12.6];
 ---
 
-<div class="flex h-full flex-col bg-ink-900 text-left">
+<div class="flex h-full flex-col bg-ink-950 text-left">
   <!-- Title bar -->
-  <div class="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2.5">
+  <div class="flex items-center gap-2 border-b border-ink-700 px-4 py-2.5">
     <img src="/brand/voice.png" alt="" width="16" height="16" class="size-4 object-contain" />
     <span class="text-[11px] font-medium tracking-tight text-mist-300">InputRack</span>
     <div class="ml-auto flex gap-1.5" aria-hidden="true">
@@ -26,93 +97,266 @@ const chainButtons = ['Up', 'Down', 'Bypass', 'Remove'];
     </div>
   </div>
 
-  <div class="grid flex-1 gap-3 p-3 sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.4fr)]">
-    <!-- Audio input panel -->
-    <div class="rounded-lg border border-white/[0.06] bg-ink-850 p-3.5">
-      <p class="font-mono text-[9px] tracking-[0.18em] text-mist-600">AUDIO INPUT</p>
-      <div class="mt-3 space-y-2.5">
-        <div>
-          <p class="text-[9px] text-mist-600">Input device</p>
-          <div class="mt-1 truncate rounded-md border border-white/[0.07] bg-ink-800 px-2.5 py-1.5 text-[11px] text-mist-300">
-            Microphone (USB Audio)
+  <!-- Input, chain and output, in the width ratio the window lays them out at. -->
+  <div
+    class="grid min-h-0 flex-1 gap-3 px-3.5 py-3 sm:grid-cols-[minmax(0,0.86fr)_minmax(0,2.5fr)_minmax(0,0.86fr)]"
+  >
+    <!-- Input panel -->
+    <div class="hidden min-w-0 flex-col rounded-[10px] border border-ink-700 bg-ink-850 px-3 py-3.5 sm:flex">
+      <p class="font-mono text-[8px] font-bold tracking-[0.16em] text-signal-400">INPUT</p>
+      <div
+        class="mt-2.5 flex items-center justify-between gap-2 rounded-md border border-ink-700 bg-ink-800 px-2.5 py-2 text-[10px] text-mist-100"
+      >
+        <span class="truncate">Microphone (USB Audio)</span>
+        <span class="text-mist-500" aria-hidden="true">&#9662;</span>
+      </div>
+
+      <!-- Peak meter, mono in -->
+      <div class="mt-2.5 flex min-h-0 flex-1 flex-col">
+        <div class="relative min-h-0 flex-1">
+          <div class="absolute inset-x-0 inset-y-1.5">
+            {
+              meterTicks.map((tick) => (
+                <span
+                  class:list={[
+                    'absolute left-0 w-5 -translate-y-1/2 text-right font-mono text-[7px] leading-none',
+                    tick.db === 0 ? 'text-mist-500' : 'text-mist-600',
+                  ]}
+                  style={`top:${tick.top}%`}
+                >
+                  {tick.label}
+                </span>
+              ))
+            }
+            {
+              meterTicks.map((tick) => (
+                <span
+                  class:list={[
+                    'absolute right-0 left-6 h-px',
+                    tick.db === 0 ? 'bg-ink-700' : 'bg-ink-700/55',
+                  ]}
+                  style={`top:${tick.top}%`}
+                  aria-hidden="true"
+                />
+              ))
+            }
+            <div class="absolute inset-y-0 right-0 left-6 flex justify-center" aria-hidden="true">
+              <div class="relative w-6 overflow-hidden rounded-[3px] border border-ink-700 bg-ink-900">
+                <div
+                  class="absolute inset-x-0.5 bottom-0 rounded-[2px] bg-gradient-to-t from-[#25989a] to-signal-400"
+                  style={`height:${fromBottom(inputPeakDb)}%`}
+                >
+                </div>
+                <!-- Unity marker; the scale runs three decibels past it. -->
+                <div
+                  class="absolute inset-x-0 h-0.5 -translate-y-1/2 bg-mist-500"
+                  style={`top:${fromTop(0)}%`}
+                >
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div>
-          <p class="text-[9px] text-mist-600">Sample rate</p>
-          <div class="mt-1 rounded-md border border-white/[0.07] bg-ink-800 px-2.5 py-1.5 text-[11px] text-mist-300">
-            48000 Hz · mono in / stereo out
-          </div>
-        </div>
-        <div class="flex gap-1.5 pt-0.5">
-          <span class="rounded-md border border-white/[0.07] bg-ink-800 px-2.5 py-1.5 text-[10px] text-mist-300">Scan VST3</span>
-          <span class="rounded-md bg-signal-400 px-2.5 py-1.5 text-[10px] font-medium text-ink-950">Monitor on</span>
-        </div>
+        <p class="pl-6 text-center font-mono text-[8px] font-bold text-mist-500">MONO</p>
+        <p class="pl-6 text-center text-[11px] font-bold text-mist-100">
+          {inputPeakDb.toFixed(1)} dB
+        </p>
       </div>
     </div>
 
     <!-- Effect chain panel -->
-    <div class="flex flex-col rounded-lg border border-white/[0.06] bg-ink-850 p-3.5">
-      <div class="flex items-center justify-between">
-        <p class="font-mono text-[9px] tracking-[0.18em] text-mist-600">EFFECT CHAIN</p>
-        <div class="flex items-center gap-1.5">
-          <span class="rounded-md border border-white/[0.07] bg-ink-800 px-2 py-1 text-[10px] text-mist-500">
-            Choose a VST3 effect
-          </span>
-          <span class="rounded-md bg-signal-400 px-2 py-1 text-[10px] font-medium text-ink-950">Add</span>
-        </div>
+    <div class="flex min-w-0 flex-col rounded-[10px] border border-ink-700 bg-ink-850 px-2.5 py-3.5">
+      <div class="flex items-center gap-1.5 pl-1">
+        <p class="font-mono text-[8px] font-bold tracking-[0.16em] text-signal-400">EFFECT CHAIN</p>
+        <span
+          class="ml-auto rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-[10px] text-mist-100"
+        >
+          +&nbsp; Add Effect
+        </span>
+        <span
+          class="rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-[10px] text-mist-100"
+        >
+          Presets
+        </span>
+        <span
+          class="rounded-md border border-ink-700 bg-ink-800 px-2 py-1.5 text-[10px] leading-none text-mist-100"
+        >
+          &#8943;
+        </span>
       </div>
 
-      <ul class="mt-3 space-y-1.5">
+      <ul class="mt-1.5 space-y-1">
         {
           chain.map((plugin, index) => (
             <li
               class:list={[
-                'flex items-center gap-3 rounded-md border px-3 py-2',
+                'flex items-center gap-2 rounded-[9px] border px-2.5 py-2',
                 index === 1
-                  ? 'border-signal-400/35 bg-signal-400/[0.07]'
-                  : 'border-white/[0.06] bg-ink-800',
+                  ? 'border-signal-400/40 bg-signal-400/[0.075]'
+                  : 'border-ink-700 bg-ink-800',
               ]}
             >
-              <span class="w-4 font-mono text-[10px] text-mist-600">{index + 1}</span>
-              <div class="min-w-0 flex-1">
-                <p class="truncate text-[11px] text-mist-100">{plugin.name}</p>
-                <p class="font-mono text-[8px] tracking-[0.16em] text-mist-600">VST3 EFFECT</p>
-              </div>
+              <span class="w-3 text-center font-mono text-[9px] text-mist-600">{index + 1}</span>
+              <span class="flex flex-col gap-[3px]" aria-hidden="true">
+                {[0, 1, 2, 3].map(() => <span class="size-[2px] rounded-full bg-mist-600" />)}
+              </span>
               <span
                 class:list={[
-                  'rounded px-1.5 py-0.5 font-mono text-[8px] tracking-[0.14em]',
-                  plugin.state === 'ACTIVE' ? 'bg-signal-400/15 text-signal-300' : 'bg-white/[0.06] text-mist-600',
+                  'rounded-md px-1.5 py-2 text-center font-mono text-[8px] font-bold',
+                  plugin.on
+                    ? 'bg-signal-400 text-ink-950'
+                    : 'border border-ink-700 bg-ink-800 text-mist-100',
                 ]}
               >
-                {plugin.state}
+                {plugin.on ? 'ON' : 'OFF'}
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-[11px] font-bold text-mist-100">{plugin.name}</p>
+                <p class="font-mono text-[7px] font-bold tracking-[0.16em] text-mist-600">
+                  VST3&nbsp; {plugin.channels}
+                </p>
+              </div>
+              <!-- The three knobs are the widest fixed part of a row. -->
+              <div class="hidden shrink-0 gap-1 sm:flex">
+                {plugin.knobs.map((knob) => (
+                  <div class="w-[58px] text-center">
+                    <p class="truncate text-[7px] leading-none text-mist-600">{knob.label}</p>
+                    <svg viewBox="0 0 40 40" class="mx-auto size-7" aria-hidden="true">
+                      <circle
+                        cx="20"
+                        cy="20"
+                        r={knobRadius}
+                        fill="none"
+                        stroke="#1c212c"
+                        stroke-width="3.5"
+                        stroke-linecap="round"
+                        stroke-dasharray={`${knobSweep} 999`}
+                        transform="rotate(135 20 20)"
+                      />
+                      <circle
+                        cx="20"
+                        cy="20"
+                        r={knobRadius}
+                        fill="none"
+                        stroke="#38dfe0"
+                        stroke-width="3.5"
+                        stroke-linecap="round"
+                        stroke-dasharray={`${knobSweep * knob.value} 999`}
+                        transform="rotate(135 20 20)"
+                      />
+                      <line
+                        x1="20"
+                        y1="20"
+                        x2={pointer(knob.value).x}
+                        y2={pointer(knob.value).y}
+                        stroke="#f2f5f8"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                    <p class="truncate text-[7px] leading-none text-mist-500">{knob.text}</p>
+                  </div>
+                ))}
+              </div>
+              <span
+                class="rounded-md border border-ink-700 bg-ink-800 px-1.5 py-2 text-[9px] leading-none text-mist-100"
+              >
+                &#8943;
               </span>
             </li>
           ))
         }
       </ul>
+    </div>
 
-      <div class="mt-auto flex flex-wrap gap-1.5 pt-3">
-        {
-          chainButtons.map((label) => (
-            <span class="rounded-md border border-white/[0.07] bg-ink-800 px-2.5 py-1.5 text-[10px] text-mist-300">
-              {label}
-            </span>
-          ))
-        }
-        <span class="rounded-md bg-signal-400 px-2.5 py-1.5 text-[10px] font-medium text-ink-950">Open editor</span>
-        <span class="ml-auto rounded-md border border-white/[0.07] bg-ink-800 px-2.5 py-1.5 text-[10px] text-mist-300">
-          Save preset
-        </span>
-        <span class="rounded-md border border-white/[0.07] bg-ink-800 px-2.5 py-1.5 text-[10px] text-mist-300">
-          Load preset
-        </span>
+    <!-- Output panel -->
+    <div class="hidden min-w-0 flex-col rounded-[10px] border border-ink-700 bg-ink-850 px-3 py-3.5 sm:flex">
+      <p class="font-mono text-[8px] font-bold tracking-[0.16em] text-signal-400">OUTPUT</p>
+      <div
+        class="mt-2.5 flex items-center justify-between gap-2 rounded-md border border-ink-700 bg-ink-800 px-2.5 py-2 text-[10px] text-mist-100"
+      >
+        <span class="truncate">CABLE Input (VB-Audio)</span>
+        <span class="text-mist-500" aria-hidden="true">&#9662;</span>
+      </div>
+
+      <!-- Peak meter, stereo out -->
+      <div class="mt-2.5 flex min-h-0 flex-1 flex-col">
+        <div class="relative min-h-0 flex-1">
+          <div class="absolute inset-x-0 inset-y-1.5">
+            {
+              meterTicks.map((tick) => (
+                <span
+                  class:list={[
+                    'absolute left-0 w-5 -translate-y-1/2 text-right font-mono text-[7px] leading-none',
+                    tick.db === 0 ? 'text-mist-500' : 'text-mist-600',
+                  ]}
+                  style={`top:${tick.top}%`}
+                >
+                  {tick.label}
+                </span>
+              ))
+            }
+            {
+              meterTicks.map((tick) => (
+                <span
+                  class:list={[
+                    'absolute right-0 left-6 h-px',
+                    tick.db === 0 ? 'bg-ink-700' : 'bg-ink-700/55',
+                  ]}
+                  style={`top:${tick.top}%`}
+                  aria-hidden="true"
+                />
+              ))
+            }
+            <div
+              class="absolute inset-y-0 right-0 left-6 flex justify-center gap-1.5"
+              aria-hidden="true"
+            >
+              {
+                outputPeakDb.map((db) => (
+                  <div class="relative w-5 overflow-hidden rounded-[3px] border border-ink-700 bg-ink-900">
+                    <div
+                      class="absolute inset-x-0.5 bottom-0 rounded-[2px] bg-gradient-to-t from-[#25989a] to-signal-400"
+                      style={`height:${fromBottom(db)}%`}
+                    />
+                    <div
+                      class="absolute inset-x-0 h-0.5 -translate-y-1/2 bg-mist-500"
+                      style={`top:${fromTop(0)}%`}
+                    />
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-center gap-1.5 pl-6 font-mono text-[8px] font-bold text-mist-500">
+          <span class="w-5 text-center">L</span>
+          <span class="w-5 text-center">R</span>
+        </div>
+        <p class="pl-6 text-center text-[11px] font-bold text-mist-100">
+          {Math.max(...outputPeakDb).toFixed(1)} dB
+        </p>
       </div>
     </div>
   </div>
 
-  <!-- Status bar -->
-  <div class="flex items-center gap-2 border-t border-white/[0.06] px-4 py-2">
-    <span class="size-1.5 rounded-full bg-signal-400"></span>
-    <p class="truncate text-[10px] text-mist-500">Sending to CABLE Input. Select "CABLE Output" in Discord or OBS.</p>
+  <!-- Status strip -->
+  <div class="flex items-center gap-3 border-t border-ink-700 px-4 py-2">
+    <span class="font-mono text-[8px] font-bold tracking-wide text-signal-400">RUNNING</span>
+    <span class="hidden whitespace-nowrap font-mono text-[9px] text-mist-500 sm:inline">
+      48.0 kHz &nbsp; 480 samples &nbsp; VST3
+    </span>
+    <span class="size-1.5 shrink-0 rounded-full bg-signal-400"></span>
+    <p class="truncate text-[10px] text-mist-500">
+      Sending to CABLE Input. Select "CABLE Output" in Discord or OBS.
+    </p>
+    <span
+      class="ml-auto hidden shrink-0 rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-[10px] text-mist-100 sm:inline"
+    >
+      Check for updates
+    </span>
+    <span class="shrink-0 rounded-md bg-signal-400 px-2.5 py-1.5 text-[10px] font-bold text-ink-950">
+      Monitor on
+    </span>
   </div>
 </div>
