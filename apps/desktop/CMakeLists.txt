@@ -8,7 +8,7 @@ juce_add_gui_app(InputRack
 target_sources(InputRack PRIVATE src/Main.cpp src/MainComponent.cpp)
 target_include_directories(InputRack PRIVATE src)
 target_link_libraries(InputRack PRIVATE
-    inputrack_engine inputrack_platform inputrack_scanner
+    inputrack_engine inputrack_platform inputrack_scanner inputrack_workflow
     juce::juce_audio_utils juce::juce_gui_extra
     juce::juce_recommended_config_flags
     juce::juce_recommended_warning_flags)

@@ -2,6 +2,7 @@
 #include <inputrack/IsolatedPluginScanner.h>
 #include <inputrack/PluginBrowsing.h>
 #include <inputrack/PluginChainEngine.h>
+#include <inputrack/ProfileStore.h>
 #if !INPUTRACK_STORE_BUILD
 #include <inputrack/UpdateChecker.h>
 #endif
@@ -38,6 +39,7 @@ public:
 private:
     class PluginRowComponent;
     class PluginBrowserComponent;
+    class GlobalHotkeys;
 
     int getNumRows() override;
     void paintListBoxItem(int row, juce::Graphics&, int width, int height, bool selected) override;
@@ -75,6 +77,12 @@ private:
     void selectOutputDevice();
     void showPluginBrowser();
     void showPresetMenu();
+    void showSaveProfileDialog();
+    void saveProfileFromDialog();
+    void activateProfile(const inputrack::WorkflowProfile&, bool automatic = false);
+    void activateProfileAtIndex(int index);
+    void pollAutomaticProfile();
+    void toggleGlobalBypass();
     void showApplicationMenu();
     void selectAndOpenPlugin(int row);
     void togglePluginBypass(int row);
@@ -99,6 +107,12 @@ private:
     juce::TextButton installUpdate{"Install update"};
 #endif
     juce::Label status;
+    inputrack::ProfileStore profiles;
+    juce::String activeProfileName;
+    juce::String lastExternalApplication;
+    std::unique_ptr<juce::AlertWindow> profileDialog;
+    std::unique_ptr<GlobalHotkeys> globalHotkeys;
+    int automaticProfilePollTicks{};
 
 #if !INPUTRACK_STORE_BUILD
     inputrack::UpdateChecker updates;

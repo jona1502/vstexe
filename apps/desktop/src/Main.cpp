@@ -34,6 +34,20 @@ void applyDarkTitleBar([[maybe_unused]] juce::Component& window)
     }
 #endif
 }
+
+juce::Image createTrayIcon()
+{
+    juce::Image icon(juce::Image::ARGB, 64, 64, true);
+    juce::Graphics graphics(icon);
+    graphics.setColour(juce::Colour(0xff38dfe0));
+    graphics.fillEllipse(2.0f, 2.0f, 60.0f, 60.0f);
+    graphics.setColour(juce::Colour(0xff08090c));
+    graphics.fillRoundedRectangle(26.0f, 15.0f, 12.0f, 26.0f, 6.0f);
+    graphics.drawRoundedRectangle(19.0f, 13.0f, 26.0f, 36.0f, 13.0f, 4.0f);
+    graphics.fillRect(29.0f, 46.0f, 6.0f, 9.0f);
+    graphics.fillRoundedRectangle(21.0f, 53.0f, 22.0f, 5.0f, 2.5f);
+    return icon;
+}
 }
 
 class InputRackApplication final : public juce::JUCEApplication {
@@ -50,11 +64,40 @@ public:
     void shutdown() override { window.reset(); }
 
 private:
+    class TrayIcon final : public juce::SystemTrayIconComponent {
+    public:
+        explicit TrayIcon(std::function<void()> showWindowIn,
+                          std::function<void()> quitIn)
+            : showWindow(std::move(showWindowIn)), quit(std::move(quitIn)) {}
+
+        void mouseDown(const juce::MouseEvent& event) override
+        {
+            if (!event.mods.isPopupMenu()) {
+                showWindow();
+                return;
+            }
+            juce::PopupMenu menu;
+            menu.addItem(1, "Open InputRack");
+            menu.addSeparator();
+            menu.addItem(2, "Quit");
+            menu.showMenuAsync({}, [show = showWindow, exit = quit](int result) {
+                if (result == 1) show();
+                else if (result == 2) exit();
+            });
+        }
+
+    private:
+        std::function<void()> showWindow, quit;
+    };
+
     class MainWindow final : public juce::DocumentWindow {
     public:
         explicit MainWindow(const juce::String& name)
             : DocumentWindow(name, juce::Colours::black,
-                             DocumentWindow::allButtons, true)
+                             DocumentWindow::allButtons, true),
+              tray([this] { showFromTray(); }, [] {
+                  juce::JUCEApplication::getInstance()->systemRequestedQuit();
+              })
         {
             setUsingNativeTitleBar(true);
             setContentOwned(new MainComponent(), true);
@@ -63,11 +106,24 @@ private:
             centreWithSize(1180, 720);
             setVisible(true);
             applyDarkTitleBar(*this);
+            tray.setIconImage(createTrayIcon(), createTrayIcon());
+            tray.setIconTooltip("InputRack");
         }
         void closeButtonPressed() override
         {
             juce::JUCEApplication::getInstance()->systemRequestedQuit();
         }
+        void minimiseButtonPressed() override { setVisible(false); }
+
+    private:
+        void showFromTray()
+        {
+            setVisible(true);
+            setMinimised(false);
+            toFront(true);
+        }
+
+        TrayIcon tray;
     };
     std::unique_ptr<MainWindow> window;
 };

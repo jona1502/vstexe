@@ -1,6 +1,10 @@
 #include "MainComponent.h"
 #include <inputrack/IsolatedPluginScanner.h>
 
+#if JUCE_WINDOWS
+#include <windows.h>
+#endif
+
 namespace {
 // Mirrors the design tokens in apps/web/src/styles/global.css so the app and
 // the product site read as one product.
@@ -42,6 +46,30 @@ juce::File pluginCacheFile()
 juce::File recoveryStateFile()
 {
     return pluginDataDirectory().getChildFile("recovery.inputrack.json");
+}
+
+juce::File profileLibraryFile()
+{
+    return pluginDataDirectory().getChildFile("profiles.json");
+}
+
+juce::String foregroundExecutable()
+{
+#if JUCE_WINDOWS
+    DWORD processId{};
+    GetWindowThreadProcessId(GetForegroundWindow(), &processId);
+    if (processId == 0) return {};
+    auto process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
+    if (process == nullptr) return {};
+    wchar_t path[32768]{};
+    DWORD length = static_cast<DWORD>(std::size(path));
+    const auto succeeded = QueryFullProcessImageNameW(process, 0, path, &length) != FALSE;
+    CloseHandle(process);
+    if (!succeeded) return {};
+    return juce::File(juce::String(path, static_cast<int>(length))).getFileName();
+#else
+    return {};
+#endif
 }
 
 /*
@@ -225,6 +253,62 @@ public:
     void closeButtonPressed() override { setVisible(false); }
 };
 }
+
+class MainComponent::GlobalHotkeys final {
+public:
+    GlobalHotkeys(std::function<void()> bypassCallback,
+                  std::function<void(int)> profileCallback)
+        : bypass(std::move(bypassCallback)), selectProfile(std::move(profileCallback))
+    {
+#if JUCE_WINDOWS
+        WNDCLASSW windowClass{};
+        windowClass.lpfnWndProc = windowProcedure;
+        windowClass.hInstance = GetModuleHandleW(nullptr);
+        windowClass.lpszClassName = L"InputRackGlobalHotkeys";
+        if (RegisterClassW(&windowClass) == 0 && GetLastError() != ERROR_CLASS_ALREADY_EXISTS)
+            return;
+        window = CreateWindowExW(0, windowClass.lpszClassName, L"", 0, 0, 0, 0, 0,
+                                 HWND_MESSAGE, nullptr, windowClass.hInstance, this);
+        if (window == nullptr) return;
+        RegisterHotKey(window, 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, 'B');
+        for (int i = 0; i < 9; ++i)
+            RegisterHotKey(window, 100 + i, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, '1' + i);
+#endif
+    }
+
+    ~GlobalHotkeys()
+    {
+#if JUCE_WINDOWS
+        if (window == nullptr) return;
+        UnregisterHotKey(window, 1);
+        for (int i = 0; i < 9; ++i) UnregisterHotKey(window, 100 + i);
+        DestroyWindow(window);
+#endif
+    }
+
+private:
+#if JUCE_WINDOWS
+    static LRESULT CALLBACK windowProcedure(HWND handle, UINT message, WPARAM wParam, LPARAM lParam)
+    {
+        auto* self = reinterpret_cast<GlobalHotkeys*>(GetWindowLongPtrW(handle, GWLP_USERDATA));
+        if (message == WM_NCCREATE) {
+            const auto* create = reinterpret_cast<CREATESTRUCTW*>(lParam);
+            self = static_cast<GlobalHotkeys*>(create->lpCreateParams);
+            SetWindowLongPtrW(handle, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
+        }
+        if (message == WM_HOTKEY && self != nullptr) {
+            if (wParam == 1) self->bypass();
+            else if (wParam >= 100 && wParam < 109)
+                self->selectProfile(static_cast<int>(wParam - 100));
+            return 0;
+        }
+        return DefWindowProcW(handle, message, wParam, lParam);
+    }
+    HWND window{};
+#endif
+    std::function<void()> bypass;
+    std::function<void(int)> selectProfile;
+};
 
 InputRackLookAndFeel::InputRackLookAndFeel()
 {
@@ -557,7 +641,8 @@ private:
 };
 
 MainComponent::MainComponent()
-    : juce::Thread("VST3 plug-in scanner")
+    : juce::Thread("VST3 plug-in scanner"),
+      profiles(profileLibraryFile())
 #if !INPUTRACK_STORE_BUILD
     , updates(juce::JUCEApplication::getInstance()->getApplicationVersion(), pluginDataDirectory())
 #endif
@@ -585,6 +670,7 @@ MainComponent::MainComponent()
 #endif
     addEffect.setComponentID("secondary");
     presets.setComponentID("secondary");
+    presets.setButtonText("Profiles");
     appMenu.setComponentID("secondary");
     monitor.setClickingTogglesState(true);
     monitor.setToggleState(engine.isMonitoringEnabled(), juce::dontSendNotification);
@@ -623,6 +709,8 @@ MainComponent::MainComponent()
     status.setFont(juce::FontOptions(12.5f));
     addAndMakeVisible(status);
     loadSettings();
+    juce::String profileError;
+    if (!profiles.load(profileError)) status.setText(profileError, juce::dontSendNotification);
     loadPluginCache();
     refreshAvailablePlugins();
     if (engine.knownPlugins().getNumTypes() > 0)
@@ -633,9 +721,17 @@ MainComponent::MainComponent()
     if (error.isNotEmpty()) status.setText("Audio: " + error, juce::dontSendNotification);
     else status.setText(routingStatus(), juce::dontSendNotification);
     refreshDeviceSelectors();
+    const auto recovering = crashMarkerFile().existsAsFile();
     recoverFromUncleanShutdown();
+    if (!recovering && activeProfileName.isNotEmpty()) {
+        if (const auto profile = profiles.find(activeProfileName); profile.has_value())
+            activateProfile(*profile);
+    }
     pluginDataDirectory().createDirectory();
     crashMarkerFile().create();
+    globalHotkeys = std::make_unique<GlobalHotkeys>(
+        [this] { toggleGlobalBypass(); },
+        [this](int index) { activateProfileAtIndex(index); });
     startTimerHz(20);
 #if !INPUTRACK_STORE_BUILD
     if (updates.isDueForAutomaticCheck()) startUpdateCheck(false);
@@ -645,6 +741,7 @@ MainComponent::MainComponent()
 
 MainComponent::~MainComponent()
 {
+    globalHotkeys.reset();
     engine.deviceManager().removeChangeListener(this);
     signalThreadShouldExit();
     stopThread(10000);
@@ -800,6 +897,10 @@ void MainComponent::paintListBoxItem(int, juce::Graphics&, int, int, bool) {}
 
 void MainComponent::timerCallback()
 {
+    if (++automaticProfilePollTicks >= 20) {
+        automaticProfilePollTicks = 0;
+        pollAutomaticProfile();
+    }
     // Peak-hold with decay: a block's peak snaps the bar up instantly and it
     // falls back gradually, which reads far more usefully at 10 Hz than a
     // meter that jumps straight back to zero between polls.
@@ -938,15 +1039,130 @@ void MainComponent::showPluginBrowser()
 void MainComponent::showPresetMenu()
 {
     juce::PopupMenu popup;
-    popup.addItem(1, "Save preset...");
-    popup.addItem(2, "Load preset...");
+    popup.addItem(10, "Save current rack as profile...");
+    const auto& stored = profiles.all();
+    if (!stored.isEmpty()) {
+        popup.addSeparator();
+        for (int i = 0; i < stored.size(); ++i) {
+            const auto suffix = stored.getReference(i).name == activeProfileName ? "  (active)" : "";
+            popup.addItem(100 + i, stored.getReference(i).name + suffix);
+        }
+    }
+    popup.addSeparator();
+    popup.addItem(1, "Export rack preset...");
+    popup.addItem(2, "Import rack preset...");
     const juce::Component::SafePointer<MainComponent> safeThis(this);
     popup.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&presets),
         [safeThis](int result) {
             if (safeThis == nullptr) return;
             if (result == 1) safeThis->savePreset();
             else if (result == 2) safeThis->loadPreset();
+            else if (result == 10) safeThis->showSaveProfileDialog();
+            else if (result >= 100) safeThis->activateProfileAtIndex(result - 100);
         });
+}
+
+void MainComponent::showSaveProfileDialog()
+{
+    profileDialog = std::make_unique<juce::AlertWindow>(
+        "Save profile", "Store this rack, its devices and optional app bindings.",
+        juce::MessageBoxIconType::NoIcon);
+    const auto suggested = activeProfileName.isNotEmpty()
+        ? activeProfileName : "Profile " + juce::String(profiles.all().size() + 1);
+    profileDialog->addTextEditor("name", suggested, "Profile name");
+    profileDialog->addTextEditor("applications", lastExternalApplication,
+                                 "Applications (comma-separated .exe names)");
+    profileDialog->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    profileDialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    const juce::Component::SafePointer<MainComponent> safeThis(this);
+    profileDialog->enterModalState(true, juce::ModalCallbackFunction::create(
+        [safeThis](int result) {
+            if (safeThis == nullptr) return;
+            if (result == 1) safeThis->saveProfileFromDialog();
+            safeThis->profileDialog.reset();
+        }), false);
+}
+
+void MainComponent::saveProfileFromDialog()
+{
+    if (profileDialog == nullptr) return;
+    const auto name = profileDialog->getTextEditorContents("name").trim();
+    if (name.isEmpty()) {
+        showError("Profile name required", "Enter a name before saving the profile.");
+        return;
+    }
+    juce::AudioDeviceManager::AudioDeviceSetup setup;
+    engine.deviceManager().getAudioDeviceSetup(setup);
+    auto applications = juce::StringArray::fromTokens(
+        profileDialog->getTextEditorContents("applications"), ",;", "");
+    applications.trim();
+    applications.removeEmptyStrings();
+    profiles.upsert({name, setup.inputDeviceName, setup.outputDeviceName,
+                     applications, engine.captureState().toJson()});
+    juce::String error;
+    if (!profiles.save(error)) {
+        showError("Could not save profile", error);
+        return;
+    }
+    activeProfileName = name;
+    saveSettings();
+    status.setText("Profile \"" + name + "\" saved. Ctrl+Alt+1..9 switches profiles.",
+                   juce::dontSendNotification);
+}
+
+void MainComponent::activateProfile(const inputrack::WorkflowProfile& profile, bool automatic)
+{
+    try {
+        editorWindow.reset();
+        editorPlugin = nullptr;
+        juce::String error;
+        if (!engine.restoreState(inputrack::ChainState::fromJson(profile.chainJson), error)) {
+            showError("Could not load profile", error);
+            return;
+        }
+        juce::AudioDeviceManager::AudioDeviceSetup setup;
+        engine.deviceManager().getAudioDeviceSetup(setup);
+        if (profile.inputDevice.isNotEmpty()) setup.inputDeviceName = profile.inputDevice;
+        if (profile.outputDevice.isNotEmpty()) setup.outputDeviceName = profile.outputDevice;
+        const auto deviceError = engine.deviceManager().setAudioDeviceSetup(setup, true);
+        if (deviceError.isNotEmpty())
+            status.setText("Profile loaded; device unavailable: " + deviceError,
+                           juce::dontSendNotification);
+        activeProfileName = profile.name;
+        saveSettings();
+        refreshDeviceSelectors();
+        refresh();
+        status.setText((automatic ? "Automatically selected \"" : "Selected \"")
+                           + profile.name + "\".",
+                       juce::dontSendNotification);
+    } catch (const std::exception& exception) {
+        showError("Invalid profile", exception.what());
+    }
+}
+
+void MainComponent::activateProfileAtIndex(int index)
+{
+    if (juce::isPositiveAndBelow(index, profiles.all().size()))
+        activateProfile(profiles.all().getReference(index));
+}
+
+void MainComponent::pollAutomaticProfile()
+{
+    const auto executable = foregroundExecutable();
+    if (executable.isEmpty() || executable.equalsIgnoreCase("InputRack.exe")) return;
+    lastExternalApplication = executable;
+    const auto match = profiles.matchApplication(executable);
+    if (match.has_value() && match->name != activeProfileName)
+        activateProfile(*match, true);
+}
+
+void MainComponent::toggleGlobalBypass()
+{
+    engine.setGloballyBypassed(!engine.isGloballyBypassed());
+    chainList.repaint();
+    status.setText(engine.isGloballyBypassed() ? "All effects bypassed (Ctrl+Alt+B)."
+                                               : "All effects enabled (Ctrl+Alt+B).",
+                   juce::dontSendNotification);
 }
 
 void MainComponent::showApplicationMenu()
@@ -958,6 +1174,8 @@ void MainComponent::showApplicationMenu()
     popup.addItem(4, "Rescan " + juce::String(blocked.size()) + " skipped plug-in"
                       + (blocked.size() == 1 ? "" : "s"),
                   !blocked.isEmpty());
+    popup.addItem(5, "Windows startup settings...");
+    popup.addItem(6, "Hotkeys: Ctrl+Alt+B, Ctrl+Alt+1..9", false);
 #if !INPUTRACK_STORE_BUILD
     popup.addSeparator();
     popup.addItem(3, "Check for updates");
@@ -976,6 +1194,7 @@ void MainComponent::showApplicationMenu()
             else if (result == 3) safeThis->startUpdateCheck(true);
 #endif
             else if (result == 4) safeThis->rescanBlockedPlugins();
+            else if (result == 5) juce::URL("ms-settings:startupapps").launchInDefaultBrowser();
         });
 }
 
@@ -1108,7 +1327,9 @@ juce::KnownPluginList::SortMethod MainComponent::selectedSort() const
 
 void MainComponent::loadSettings()
 {
-    const auto stored = juce::JSON::parse(settingsFile()).getProperty("pluginSort", "name").toString();
+    const auto settings = juce::JSON::parse(settingsFile());
+    const auto stored = settings.getProperty("pluginSort", "name").toString();
+    activeProfileName = settings.getProperty("activeProfile", {}).toString();
     const auto id = stored == "manufacturer" ? 2 : stored == "category" ? 3 : 1;
     // A missing or damaged file must not keep the picker empty, so anything
     // unrecognised falls back to sorting by name.
@@ -1123,6 +1344,7 @@ void MainComponent::saveSettings() const
                                                         : "name";
     juce::DynamicObject::Ptr settings = new juce::DynamicObject();
     settings->setProperty("pluginSort", name);
+    settings->setProperty("activeProfile", activeProfileName);
     settingsFile().replaceWithText(juce::JSON::toString(juce::var(settings.get())));
 }
 

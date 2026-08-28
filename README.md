@@ -29,6 +29,10 @@ installed on a machine with Secure Boot enabled. See
 - versioned InputRack presets including complete plug-in state, with crash
   recovery of the last known-good rack after an unexpected shutdown
 - automatic recovery when the selected audio device disappears
+- named workflow profiles containing the rack and selected audio devices
+- optional foreground-application bindings that select a profile automatically
+- global `Ctrl+Alt+B` bypass and `Ctrl+Alt+1` through `Ctrl+Alt+9` profile hotkeys
+- system tray access and an MSIX startup task controlled from Windows Settings
 - publishing through any virtual audio cable
 - WDM/WaveRT virtual capture endpoint on Windows 11 (driver not release-signed)
 
