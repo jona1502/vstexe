@@ -1,5 +1,6 @@
 #include <inputrack/IsolatedPluginScanner.h>
 #include <chrono>
+#include <memory>
 #include <iostream>
 #include <thread>
 
@@ -47,22 +48,40 @@ int main(int argc, char* argv[])
         return actAsHelper(arguments);
 
     const auto executable = juce::File::getSpecialLocation(juce::File::currentExecutableFile);
-    inputrack::IsolatedPluginScanner scanner(executable, 1000);
+    const auto timeouts = std::make_shared<inputrack::ScanTimeouts>();
+    inputrack::IsolatedPluginScanner scanner(executable, 1000, timeouts);
 
     juce::OwnedArray<juce::PluginDescription> found;
-    expect(scanner.scan("VST3", "safe", found), "a healthy helper scan succeeds");
+    expect(scanner.scan("VST3", "safe", found) == inputrack::ScanOutcome::described,
+           "a healthy helper scan succeeds");
     expect(found.size() == 1 && found[0]->name == "Isolated test effect",
            "descriptions cross the process boundary");
 
     found.clear();
-    expect(!scanner.scan("VST3", "crash", found), "a crashing helper is contained");
+    expect(scanner.scan("VST3", "crash", found) == inputrack::ScanOutcome::crashed,
+           "a crashing helper is contained");
 
-    inputrack::IsolatedPluginScanner impatient(executable, 50);
-    expect(!impatient.scan("VST3", "hang", found), "a hanging helper is terminated");
+    inputrack::IsolatedPluginScanner impatient(executable, 50, timeouts);
+    expect(impatient.scan("VST3", "hang", found) == inputrack::ScanOutcome::timedOut,
+           "a hanging helper is terminated");
+    expect(timeouts->files() == juce::StringArray{"hang"},
+           "the module that ran out of time is recorded for the caller");
 
     inputrack::IsolatedPluginScanner missing(
-        executable.getSiblingFile("missing-inputrack-scanner"), 50);
-    expect(!missing.scan("VST3", "safe", found), "a missing helper fails safely");
+        executable.getSiblingFile("missing-inputrack-scanner"), 50, timeouts);
+    expect(missing.scan("VST3", "safe", found) == inputrack::ScanOutcome::unavailable,
+           "a missing helper fails safely");
+
+    // Only a crash may reach the persistent blacklist: a slow module and a
+    // broken installation both have to stay retryable.
+    juce::VST3PluginFormat format;
+    found.clear();
+    expect(!scanner.findPluginTypesFor(format, found, "crash"),
+           "a crash is reported to KnownPluginList as a failure");
+    expect(impatient.findPluginTypesFor(format, found, "hang"),
+           "a timeout is not reported as a failure");
+    expect(missing.findPluginTypesFor(format, found, "safe"),
+           "a missing helper is not reported as a failure");
 
     if (failures == 0) std::cout << "IsolatedPluginScannerTests passed\n";
     return failures == 0 ? 0 : 1;
