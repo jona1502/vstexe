@@ -635,8 +635,7 @@ MainComponent::MainComponent()
         addAndMakeVisible(component);
 
     for (auto* button : std::initializer_list<juce::Button*>{
-             &scan, &remove, &up, &down, &bypass, &open, &monitor, &globalBypass, &save, &load,
-             &addEffect, &presets, &appMenu, &checkUpdates, &installUpdate})
+             &scan, &monitor, &addEffect, &presets, &appMenu, &checkUpdates, &installUpdate})
         button->addListener(this);
 
     scan.setComponentID("secondary");
@@ -644,8 +643,6 @@ MainComponent::MainComponent()
     installUpdate.setComponentID("primary");
     // Only shown once a newer release is actually available.
     installUpdate.setVisible(false);
-    remove.setComponentID("danger");
-    open.setComponentID("primary");
     addEffect.setComponentID("secondary");
     presets.setComponentID("secondary");
     appMenu.setComponentID("secondary");
@@ -653,9 +650,6 @@ MainComponent::MainComponent()
     monitor.setToggleState(engine.isMonitoringEnabled(), juce::dontSendNotification);
     monitor.setButtonText(engine.isMonitoringEnabled() ? "Monitor on" : "Monitor off");
     monitor.setComponentID(engine.isMonitoringEnabled() ? "primary" : "secondary");
-    globalBypass.setClickingTogglesState(true);
-    globalBypass.setToggleState(engine.isGloballyBypassed(), juce::dontSendNotification);
-    globalBypass.setComponentID("secondary");
     engine.deviceManager().addChangeListener(this);
     chainList.setRowHeight(82);
     chainList.setOutlineThickness(0);
@@ -915,25 +909,10 @@ void MainComponent::timerCallback()
 
 void MainComponent::buttonClicked(juce::Button* button)
 {
-    const int row = chainList.getSelectedRow();
     if (button == &addEffect) showPluginBrowser();
     else if (button == &presets) showPresetMenu();
     else if (button == &appMenu) showApplicationMenu();
     else if (button == &scan) scanPlugins();
-    else if (button == &remove && row >= 0) {
-        editorWindow.reset();
-        editorPlugin = nullptr;
-        engine.removePlugin(row);
-        refresh();
-    }
-    else if (button == &up && row > 0) { engine.movePlugin(row, row - 1); refresh(); chainList.selectRow(row - 1); }
-    else if (button == &down && row + 1 < engine.pluginCount()) { engine.movePlugin(row, row + 1); refresh(); chainList.selectRow(row + 1); }
-    else if (button == &bypass && row >= 0) {
-        engine.setBypassed(row, !engine.isBypassed(row));
-        chainList.repaintRow(row);
-        persistRecoveryState();
-    }
-    else if (button == &open) openSelectedPlugin();
     else if (button == &monitor) {
         const auto enabled = monitor.getToggleState();
         engine.setMonitoringEnabled(enabled);
@@ -942,18 +921,8 @@ void MainComponent::buttonClicked(juce::Button* button)
         monitor.repaint();
         status.setText(routingStatus(), juce::dontSendNotification);
     }
-    else if (button == &globalBypass) {
-        const auto bypassed = globalBypass.getToggleState();
-        engine.setGloballyBypassed(bypassed);
-        globalBypass.setButtonText(bypassed ? "Bypassed" : "Bypass all");
-        globalBypass.setComponentID(bypassed ? "primary" : "secondary");
-        globalBypass.repaint();
-        status.setText(routingStatus(), juce::dontSendNotification);
-    }
     else if (button == &checkUpdates) startUpdateCheck(true);
     else if (button == &installUpdate) startUpdateDownload();
-    else if (button == &save) savePreset();
-    else if (button == &load) loadPreset();
 }
 
 void MainComponent::refreshDeviceSelectors()
@@ -1050,7 +1019,6 @@ void MainComponent::showApplicationMenu()
             if (result == 1) {
                 const auto bypassed = !safeThis->engine.isGloballyBypassed();
                 safeThis->engine.setGloballyBypassed(bypassed);
-                safeThis->globalBypass.setToggleState(bypassed, juce::dontSendNotification);
                 safeThis->chainList.repaint();
             }
             else if (result == 2) safeThis->showPluginBrowser();

@@ -88,11 +88,8 @@ private:
     juce::TextButton addEffect{"+  Add Effect"};
     juce::TextButton presets{"Presets"};
     juce::TextButton appMenu{"..."};
-    juce::TextButton scan{"Scan VST3"}, remove{"Remove"};
-    juce::TextButton up{"Up"}, down{"Down"}, bypass{"Bypass"}, open{"Open editor"};
+    juce::TextButton scan{"Scan VST3"};
     juce::TextButton monitor{"Monitor off"};
-    juce::TextButton globalBypass{"Bypass all"};
-    juce::TextButton save{"Save preset"}, load{"Load preset"};
     juce::TextButton checkUpdates{"Check for updates"};
     juce::TextButton installUpdate{"Install update"};
     juce::Label status;
