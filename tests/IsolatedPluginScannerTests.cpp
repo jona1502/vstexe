@@ -26,6 +26,11 @@ int actAsHelper(const juce::StringArray& arguments)
         std::this_thread::sleep_for(std::chrono::seconds(2));
         return 0;
     }
+    // Comfortably more than the pipe buffer Windows hands out by default, so a
+    // caller that only reads after the exit would deadlock here instead.
+    if (identifier == "chatty")
+        for (int i = 0; i < 4000; ++i)
+            std::cout << "helper chatter line " << i << std::endl;
 
     juce::PluginDescription description;
     description.name = "Isolated test effect";
@@ -60,6 +65,11 @@ int main(int argc, char* argv[])
     found.clear();
     expect(scanner.scan("VST3", "crash", found) == inputrack::ScanOutcome::crashed,
            "a crashing helper is contained");
+
+    found.clear();
+    inputrack::IsolatedPluginScanner patient(executable, 30000, timeouts);
+    expect(patient.scan("VST3", "chatty", found) == inputrack::ScanOutcome::described,
+           "a helper that fills the output pipe still finishes");
 
     inputrack::IsolatedPluginScanner impatient(executable, 50, timeouts);
     expect(impatient.scan("VST3", "hang", found) == inputrack::ScanOutcome::timedOut,

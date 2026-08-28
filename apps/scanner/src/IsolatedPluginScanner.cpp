@@ -1,6 +1,33 @@
 #include <inputrack/IsolatedPluginScanner.h>
 
 namespace inputrack {
+namespace {
+/*
+ * The helper inherits a single pipe for stdout and stderr, and Windows gives
+ * that pipe a few kilobytes of buffer. A plug-in that logs while it loads fills
+ * the buffer and then blocks on its next write, with nobody at the other end:
+ * the wait below would see a process that never finishes and call it a hang.
+ * The output itself is of no interest, but somebody has to keep reading it.
+ */
+class ChildOutputDrain final : private juce::Thread {
+public:
+    explicit ChildOutputDrain(juce::ChildProcess& processToDrain)
+        : juce::Thread("VST3 scan helper output"), child(processToDrain)
+    {
+        startThread();
+    }
+
+    ~ChildOutputDrain() override { stopThread(2000); }
+
+private:
+    // Returns once the helper has exited and the pipe is empty, which is why
+    // this is only ever destroyed after the process is gone.
+    void run() override { child.readAllProcessOutput(); }
+
+    juce::ChildProcess& child;
+};
+}
+
 void ScanTimeouts::add(const juce::String& fileOrIdentifier)
 {
     const juce::ScopedLock guard(lock);
@@ -69,6 +96,10 @@ ScanOutcome IsolatedPluginScanner::scan(
     if (!child.start(arguments))
         return ScanOutcome::unavailable;
 
+    // Declared after the process so it is joined before the process is torn
+    // down, on every path out of this function.
+    ChildOutputDrain drain(child);
+
     const auto startedAt = juce::Time::getMillisecondCounterHiRes();
     while (child.isRunning()) {
         const auto timedOut = juce::Time::getMillisecondCounterHiRes() - startedAt >= timeoutMs;
@@ -82,10 +113,6 @@ ScanOutcome IsolatedPluginScanner::scan(
         juce::Thread::sleep(10);
     }
 
-    // Drain the redirected handles before destroying the process object. The
-    // helper emits output only on errors, but leaving unread handles behind is
-    // still avoidable resource leakage on Windows.
-    child.readAllProcessOutput();
     if (child.getExitCode() != 0) {
         output.deleteFile();
         return ScanOutcome::crashed;
