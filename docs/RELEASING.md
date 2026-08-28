@@ -52,6 +52,32 @@ Set these GitHub Actions repository variables before submitting a CI package:
 The defaults (`InputRack.Dev` and `CN=InputRack Development`) only make local
 package validation reproducible; they are not a production Store identity.
 
+The commercial configuration is versioned in `store/product.json`: the app is
+free and Pro is a durable, one-time add-on with offer token `inputrack.pro`.
+The regular target price is EUR 39.99, with EUR 29.99 for the first 30 days
+after launch. Partner Center maps these targets to its regional price tiers and
+handles taxes, refunds and Microsoft's Store fee.
+
+Create the app and add-on in Partner Center, then set these repository variables:
+
+- `INPUTRACK_STORE_IDENTITY_NAME`
+- `INPUTRACK_STORE_PUBLISHER`
+- `INPUTRACK_STORE_PRODUCT_ID`
+- `PUBLIC_INPUTRACK_STORE_URL` (`https://apps.microsoft.com/detail/PRODUCT_ID`)
+
+Complete the legal operator data in `apps/web/src/data/site.ts`. The manual
+**Microsoft Store submission package** workflow then checks all identifiers,
+builds and tests the Store variant, verifies the Store-configured website, and
+uploads the MSIX artifact for Partner Center. Run the same gate locally with:
+
+```powershell
+.\scripts\check-store-release.ps1
+```
+
+The repository intentionally cannot supply the publisher identity, Product ID,
+legal address or final regional Partner Center prices; those are external
+account data and the gate fails clearly until they are provided.
+
 ## In-app updates
 
 The application checks for newer releases itself, so a tagged release reaches an

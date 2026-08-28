@@ -28,23 +28,26 @@ import { legal, site } from '../data/site';
     Diese Daten werden nicht mit anderen Quellen zusammengeführt.
   </p>
 
-  <h2>Abruf der Download-Informationen von GitHub</h2>
-  <p>
-    Der Download-Button ermittelt die aktuelle Version über die öffentliche Programmierschnittstelle
-    von GitHub (<span class="font-mono text-xs">api.github.com</span>). Dabei wird Ihre IP-Adresse an
-    GitHub, Inc. übertragen; Gleiches gilt, wenn Sie einem Link zu den Releases folgen.
-    Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO, das berechtigte Interesse an der
-    Auslieferung der jeweils aktuellen Programmversion. Es gilt die
-    <a href="https://docs.github.com/site-policy/privacy-policies/github-privacy-statement" rel="noopener noreferrer" target="_blank">
-      Datenschutzerklärung von GitHub
-    </a>.
-  </p>
+  {site.storeUrl ? (
+    <><h2>Microsoft Store</h2><p>
+      Beim Öffnen des Store-Links sowie bei Kauf und Wiederherstellung von InputRack Pro verarbeitet
+      Microsoft die dafür erforderlichen Konto-, Zahlungs- und Lizenzdaten. Die Anwendung erhält nur den
+      Lizenzstatus, keine Zahlungsdaten. Es gilt die <a href="https://privacy.microsoft.com/privacystatement" rel="noopener noreferrer" target="_blank">Datenschutzerklärung von Microsoft</a>.
+    </p></>
+  ) : (
+    <><h2>Abruf der Download-Informationen von GitHub</h2><p>
+      Der Download-Button ermittelt die aktuelle Version über die öffentliche Programmierschnittstelle
+      von GitHub (<span class="font-mono text-xs">api.github.com</span>). Dabei wird Ihre IP-Adresse an
+      GitHub, Inc. übertragen; Gleiches gilt, wenn Sie einem Link zu den Releases folgen.
+      Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO. Es gilt die <a href="https://docs.github.com/site-policy/privacy-policies/github-privacy-statement" rel="noopener noreferrer" target="_blank">Datenschutzerklärung von GitHub</a>.
+    </p></>
+  )}
 
   <h2>Die Anwendung selbst</h2>
   <p>
     {site.name} verarbeitet Audio ausschließlich lokal auf Ihrem Rechner. Die Anwendung überträgt
-    weder Audiodaten noch Nutzungsdaten an uns oder an Dritte, benötigt kein Konto und funktioniert
-    ohne Internetverbindung. Presets und der Plug-in-Cache liegen als Dateien in Ihrem eigenen
+    weder Audiodaten noch Nutzungsdaten an uns oder an Dritte und benötigt kein InputRack-Konto.
+    Nur Kauf und Wiederherstellung von Pro verwenden den Microsoft Store. Presets und der Plug-in-Cache liegen als Dateien in Ihrem eigenen
     Benutzerverzeichnis.
   </p>
 

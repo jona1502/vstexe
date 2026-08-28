@@ -1,5 +1,5 @@
 ---
-import { nav, site } from '../data/site';
+import { downloadUrl, nav, site } from '../data/site';
 import Button from './Button.astro';
 ---
 
@@ -36,7 +36,7 @@ import Button from './Button.astro';
     </nav>
 
     <div class="flex items-center gap-2">
-      <Button href={site.releases} size="sm" data-download-link>Download</Button>
+      <Button href={downloadUrl} size="sm" data-download-link>Download</Button>
 
       <button
         type="button"

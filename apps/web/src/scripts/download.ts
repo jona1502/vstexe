@@ -34,6 +34,7 @@ const isReleaseAsset = (asset: ReleaseAsset, expectedName: string, version: stri
  * to an anchor that only scrolls.
  */
 export const resolveLatestDownload = async () => {
+  if (site.storeUrl) return;
   const links = document.querySelectorAll<HTMLAnchorElement>('[data-download-link]');
   if (links.length === 0) return;
 

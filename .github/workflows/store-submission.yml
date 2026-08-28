@@ -1,0 +1,74 @@
+name: Microsoft Store submission package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semantic package version
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    env:
+      INPUTRACK_STORE_IDENTITY_NAME: ${{ vars.INPUTRACK_STORE_IDENTITY_NAME }}
+      INPUTRACK_STORE_PUBLISHER: ${{ vars.INPUTRACK_STORE_PUBLISHER }}
+      INPUTRACK_STORE_PRODUCT_ID: ${{ vars.INPUTRACK_STORE_PRODUCT_ID }}
+      PUBLIC_INPUTRACK_STORE_URL: ${{ vars.PUBLIC_INPUTRACK_STORE_URL }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Validate version and Store configuration
+        shell: pwsh
+        run: |
+          if ('${{ inputs.version }}' -notmatch '^\d+\.\d+\.\d+$') {
+            throw 'Version must use MAJOR.MINOR.PATCH.'
+          }
+          .\scripts\check-store-release.ps1
+
+      - name: Configure Store build
+        shell: pwsh
+        run: >-
+          cmake -S . -B build/windows-store-ci
+          -G "Visual Studio 17 2022" -A x64
+          "-DINPUTRACK_VERSION=${{ inputs.version }}"
+          -DINPUTRACK_BUILD_TESTS=ON
+          -DINPUTRACK_STORE_BUILD=ON
+          -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+
+      - name: Build and test
+        shell: pwsh
+        run: |
+          cmake --build build/windows-store-ci --config Release --parallel
+          ctest --test-dir build/windows-store-ci -C Release --output-on-failure
+
+      - name: Build submission MSIX
+        shell: pwsh
+        run: >-
+          .\installer\windows\build-msix.ps1
+          -Version "${{ inputs.version }}"
+          -BuildDirectory build/windows-store-ci
+          -IdentityName "$env:INPUTRACK_STORE_IDENTITY_NAME"
+          -Publisher "$env:INPUTRACK_STORE_PUBLISHER"
+
+      - name: Verify website
+        shell: pwsh
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm run check
+          npm run build
+
+      - name: Upload submission artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: InputRack-${{ inputs.version }}-Store-submission
+          path: out/windows/*.msix
+          if-no-files-found: error

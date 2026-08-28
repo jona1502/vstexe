@@ -1,0 +1,34 @@
+---
+import { pricing } from '../data/site';
+import SectionHeading from './SectionHeading.astro';
+---
+
+<section id="pricing" class="scroll-mt-24 border-t border-white/[0.06] py-24 sm:py-32">
+  <div class="container-page">
+    <SectionHeading eyebrow="Simple pricing" title="Start free. Keep Pro forever." />
+    <div class="mx-auto mt-12 grid max-w-4xl gap-5 md:grid-cols-2">
+      {pricing.map((plan) => (
+        <article class:list={[
+          'rounded-2xl border p-7',
+          plan.featured
+            ? 'border-signal-400/40 bg-signal-500/[0.08]'
+            : 'border-white/[0.08] bg-white/[0.025]',
+        ]}>
+          <p class="font-mono text-xs tracking-[0.16em] text-signal-300 uppercase">{plan.name}</p>
+          <div class="mt-4 flex items-end gap-2">
+            <span class="text-4xl font-bold tracking-tight text-mist-100">{plan.price}</span>
+            <span class="pb-1 text-sm text-mist-600">{plan.billing}</span>
+          </div>
+          <p class="mt-4 text-sm leading-relaxed text-mist-500">{plan.detail}</p>
+          <ul class="mt-6 space-y-3 text-sm text-mist-300">
+            {plan.features.map((feature) => <li class="flex gap-3"><span class="text-signal-400">✓</span>{feature}</li>)}
+          </ul>
+        </article>
+      ))}
+    </div>
+    <p class="mx-auto mt-6 max-w-2xl text-center text-xs leading-relaxed text-mist-600">
+      Introductory Pro price: €29.99 for the first 30 days after Store launch. Local Store pricing
+      and taxes may vary. Purchases are processed by Microsoft.
+    </p>
+  </div>
+</section>

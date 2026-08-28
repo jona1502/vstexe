@@ -9,6 +9,7 @@ export const site = {
     'Route your physical microphone through your own 64-bit VST3 effects and send the processed signal wherever you need it, through a virtual audio cable.',
   releases: 'https://github.com/jona1502/inputrack/releases',
   releasesApi: 'https://api.github.com/repos/jona1502/inputrack/releases/latest',
+  storeUrl: import.meta.env.PUBLIC_INPUTRACK_STORE_URL ?? '',
   /**
    * Windows lets only a driver publish a microphone, and ours is not
    * release-signed yet. Until then the chain is published through a virtual
@@ -19,9 +20,25 @@ export const site = {
   cableUrl: 'https://vb-audio.com/Cable/',
 } as const;
 
+export const downloadUrl = site.storeUrl || site.releases;
+
 export const nav = [
   { label: 'Features', href: '#features' },
   { label: 'Signal path', href: '#signal-path' },
+  { label: 'Pricing', href: '#pricing' },
+] as const;
+
+export const pricing = [
+  {
+    name: 'Free', price: '€0', billing: 'forever', featured: false,
+    detail: 'Build and route a complete microphone effect chain without an InputRack account.',
+    features: ['VST3 hosting and scanning', 'Rack preset import/export', 'Meters and routing assistant'],
+  },
+  {
+    name: 'Pro', price: '€39.99', billing: 'one time', featured: true,
+    detail: 'Faster daily workflows with no subscription and all 1.x updates included.',
+    features: ['Named profiles', 'Automatic app profiles', 'Global hotkeys', 'Start with Windows'],
+  },
 ] as const;
 
 /**
@@ -74,7 +91,7 @@ export const featureBenefits = [
   {
     title: 'Keep processing on your machine',
     detail:
-      'Capture, effects and publishing all run in one local process. There is no account, no upload and no network dependency.',
+      'Capture, effects and publishing all run locally. There is no InputRack account or upload; only Store purchase and restore use the network.',
   },
   {
     title: 'Use one processed signal everywhere',
@@ -104,13 +121,14 @@ export const footerLinks = [
     links: [
       { label: 'Features', href: '#features' },
       { label: 'Signal path', href: '#signal-path' },
+      { label: 'Pricing', href: '#pricing' },
       { label: 'Download', href: '#download' },
     ],
   },
   {
     heading: 'Download',
     links: [
-      { label: 'Windows releases', href: site.releases, external: true },
+      { label: site.storeUrl ? 'Microsoft Store' : 'Windows preview', href: downloadUrl, external: true },
     ],
   },
   {

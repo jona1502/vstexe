@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "application": {
+    "acquisition": "free",
+    "platform": "Windows 11 x64"
+  },
+  "pro": {
+    "productType": "durable",
+    "offerToken": "inputrack.pro",
+    "billing": "one-time",
+    "includedMajorVersions": [1],
+    "regularPrice": { "amount": 39.99, "currency": "EUR" },
+    "launchPrice": {
+      "amount": 29.99,
+      "currency": "EUR",
+      "durationDays": 30,
+      "startsOnFirstPublicRelease": true
+    },
+    "features": [
+      "Named workflow profiles",
+      "Automatic profiles per application",
+      "Global bypass and profile hotkeys",
+      "Start with Windows"
+    ]
+  }
+}
