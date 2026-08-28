@@ -67,3 +67,5 @@ Platform delivery milestones are described in
 [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
 Release creation and signing requirements are described in
 [docs/RELEASING.md](docs/RELEASING.md).
+Microsoft Store purchases and the Pro entitlement are described in
+[docs/STORE_COMMERCE.md](docs/STORE_COMMERCE.md).

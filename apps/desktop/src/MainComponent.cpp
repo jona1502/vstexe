@@ -642,7 +642,8 @@ private:
 
 MainComponent::MainComponent()
     : juce::Thread("VST3 plug-in scanner"),
-      profiles(profileLibraryFile())
+      profiles(profileLibraryFile()),
+      entitlement(inputrack::EntitlementService::create())
 #if !INPUTRACK_STORE_BUILD
     , updates(juce::JUCEApplication::getInstance()->getApplicationVersion(), pluginDataDirectory())
 #endif
@@ -650,11 +651,11 @@ MainComponent::MainComponent()
     setLookAndFeel(&lookAndFeel);
     for (auto* component : std::initializer_list<juce::Component*>{
              &inputDevice, &outputDevice, &chainList, &addEffect, &presets, &appMenu,
-             &monitor})
+             &proButton, &monitor})
         addAndMakeVisible(component);
 
     for (auto* button : std::initializer_list<juce::Button*>{
-             &scan, &monitor, &addEffect, &presets, &appMenu})
+             &scan, &monitor, &addEffect, &presets, &appMenu, &proButton})
         button->addListener(this);
 
     scan.setComponentID("secondary");
@@ -671,6 +672,7 @@ MainComponent::MainComponent()
     addEffect.setComponentID("secondary");
     presets.setComponentID("secondary");
     presets.setButtonText("Profiles");
+    proButton.setComponentID("primary");
     appMenu.setComponentID("secondary");
     monitor.setClickingTogglesState(true);
     monitor.setToggleState(engine.isMonitoringEnabled(), juce::dontSendNotification);
@@ -722,16 +724,15 @@ MainComponent::MainComponent()
     else status.setText(routingStatus(), juce::dontSendNotification);
     refreshDeviceSelectors();
     const auto recovering = crashMarkerFile().existsAsFile();
+    restoreActiveProfile = !recovering;
     recoverFromUncleanShutdown();
-    if (!recovering && activeProfileName.isNotEmpty()) {
-        if (const auto profile = profiles.find(activeProfileName); profile.has_value())
-            activateProfile(*profile);
-    }
     pluginDataDirectory().createDirectory();
     crashMarkerFile().create();
-    globalHotkeys = std::make_unique<GlobalHotkeys>(
-        [this] { toggleGlobalBypass(); },
-        [this](int index) { activateProfileAtIndex(index); });
+    updateEntitlementUi({entitlement->isPro(), {}});
+    const juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::MessageManager::callAsync([safeThis] {
+        if (safeThis != nullptr) safeThis->refreshEntitlement(false);
+    });
     startTimerHz(20);
 #if !INPUTRACK_STORE_BUILD
     if (updates.isDueForAutomaticCheck()) startUpdateCheck(false);
@@ -859,6 +860,8 @@ void MainComponent::resized()
     auto headerRow = chainInner.removeFromTop(40);
     appMenu.setBounds(headerRow.removeFromRight(36).reduced(0, 2));
     headerRow.removeFromRight(6);
+    proButton.setBounds(headerRow.removeFromRight(74).reduced(0, 2));
+    headerRow.removeFromRight(6);
     presets.setBounds(headerRow.removeFromRight(82).reduced(0, 2));
     headerRow.removeFromRight(6);
     addEffect.setBounds(headerRow.removeFromRight(112).reduced(0, 2));
@@ -958,6 +961,7 @@ void MainComponent::buttonClicked(juce::Button* button)
 {
     if (button == &addEffect) showPluginBrowser();
     else if (button == &presets) showPresetMenu();
+    else if (button == &proButton) showProMenu();
     else if (button == &appMenu) showApplicationMenu();
     else if (button == &scan) scanPlugins();
     else if (button == &monitor) {
@@ -1038,6 +1042,10 @@ void MainComponent::showPluginBrowser()
 
 void MainComponent::showPresetMenu()
 {
+    if (!entitlement->isPro()) {
+        showProMenu();
+        return;
+    }
     juce::PopupMenu popup;
     popup.addItem(10, "Save current rack as profile...");
     const auto& stored = profiles.all();
@@ -1148,6 +1156,7 @@ void MainComponent::activateProfileAtIndex(int index)
 
 void MainComponent::pollAutomaticProfile()
 {
+    if (!entitlement->isPro()) return;
     const auto executable = foregroundExecutable();
     if (executable.isEmpty() || executable.equalsIgnoreCase("InputRack.exe")) return;
     lastExternalApplication = executable;
@@ -1165,6 +1174,72 @@ void MainComponent::toggleGlobalBypass()
                    juce::dontSendNotification);
 }
 
+void MainComponent::showProMenu()
+{
+    juce::PopupMenu popup;
+    if (entitlement->isPro()) popup.addItem(1, "InputRack Pro is active", false, true);
+    else popup.addItem(1, "Buy InputRack Pro", !entitlement->isBusy());
+    popup.addItem(2, "Restore purchases", !entitlement->isBusy());
+    const juce::Component::SafePointer<MainComponent> safeThis(this);
+    popup.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&proButton),
+        [safeThis](int result) {
+            if (safeThis == nullptr) return;
+            if (result == 1 && !safeThis->entitlement->isPro()) safeThis->purchasePro();
+            else if (result == 2) safeThis->refreshEntitlement(true);
+        });
+}
+
+void MainComponent::refreshEntitlement(bool requestedByUser)
+{
+    if (entitlement->isBusy()) return;
+    proButton.setEnabled(false);
+    if (requestedByUser) status.setText("Checking Microsoft Store purchases...",
+                                        juce::dontSendNotification);
+    void* window = getPeer() != nullptr ? getPeer()->getNativeHandle() : nullptr;
+    const juce::Component::SafePointer<MainComponent> safeThis(this);
+    entitlement->refresh(window, [safeThis, requestedByUser](inputrack::EntitlementResult result) {
+        if (safeThis == nullptr) return;
+        safeThis->updateEntitlementUi(result);
+        if (requestedByUser && result.message.isEmpty())
+            safeThis->status.setText(result.pro ? "InputRack Pro purchase restored."
+                                                : "No InputRack Pro purchase was found.",
+                                     juce::dontSendNotification);
+    });
+}
+
+void MainComponent::purchasePro()
+{
+    if (entitlement->isBusy()) return;
+    proButton.setEnabled(false);
+    status.setText("Opening Microsoft Store...", juce::dontSendNotification);
+    void* window = getPeer() != nullptr ? getPeer()->getNativeHandle() : nullptr;
+    const juce::Component::SafePointer<MainComponent> safeThis(this);
+    entitlement->purchase(window, [safeThis](inputrack::EntitlementResult result) {
+        if (safeThis == nullptr) return;
+        safeThis->updateEntitlementUi(result);
+    });
+}
+
+void MainComponent::updateEntitlementUi(const inputrack::EntitlementResult& result)
+{
+    proButton.setEnabled(true);
+    proButton.setButtonText(result.pro ? "Pro  ✓" : "Get Pro");
+    proButton.setComponentID(result.pro ? "secondary" : "primary");
+    if (result.pro && globalHotkeys == nullptr) {
+        globalHotkeys = std::make_unique<GlobalHotkeys>(
+            [this] { toggleGlobalBypass(); },
+            [this](int index) { activateProfileAtIndex(index); });
+        if (restoreActiveProfile && activeProfileName.isNotEmpty()) {
+            if (const auto profile = profiles.find(activeProfileName); profile.has_value())
+                activateProfile(*profile);
+        }
+    } else if (!result.pro) {
+        globalHotkeys.reset();
+    }
+    if (result.message.isNotEmpty()) status.setText(result.message, juce::dontSendNotification);
+    repaint();
+}
+
 void MainComponent::showApplicationMenu()
 {
     juce::PopupMenu popup;
@@ -1174,8 +1249,11 @@ void MainComponent::showApplicationMenu()
     popup.addItem(4, "Rescan " + juce::String(blocked.size()) + " skipped plug-in"
                       + (blocked.size() == 1 ? "" : "s"),
                   !blocked.isEmpty());
-    popup.addItem(5, "Windows startup settings...");
-    popup.addItem(6, "Hotkeys: Ctrl+Alt+B, Ctrl+Alt+1..9", false);
+    popup.addItem(5, "Windows startup settings...", entitlement->isPro());
+    popup.addItem(6, entitlement->isPro()
+                         ? "Hotkeys: Ctrl+Alt+B, Ctrl+Alt+1..9"
+                         : "Hotkeys: Ctrl+Alt+B, Ctrl+Alt+1..9 (Pro)",
+                  false);
 #if !INPUTRACK_STORE_BUILD
     popup.addSeparator();
     popup.addItem(3, "Check for updates");

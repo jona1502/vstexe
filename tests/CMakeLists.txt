@@ -51,3 +51,8 @@ add_test(NAME global_bypass_tests COMMAND global_bypass_tests)
 add_executable(profile_store_tests ProfileStoreTests.cpp)
 target_link_libraries(profile_store_tests PRIVATE inputrack_workflow)
 add_test(NAME profile_store_tests COMMAND profile_store_tests)
+
+add_executable(entitlement_service_tests EntitlementServiceTests.cpp)
+target_link_libraries(entitlement_service_tests PRIVATE inputrack_commerce)
+add_test(NAME entitlement_service_tests COMMAND entitlement_service_tests)
+set_tests_properties(entitlement_service_tests PROPERTIES ENVIRONMENT "INPUTRACK_PRO=1")

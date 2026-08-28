@@ -3,6 +3,7 @@
 #include <inputrack/PluginBrowsing.h>
 #include <inputrack/PluginChainEngine.h>
 #include <inputrack/ProfileStore.h>
+#include <inputrack/EntitlementService.h>
 #if !INPUTRACK_STORE_BUILD
 #include <inputrack/UpdateChecker.h>
 #endif
@@ -83,6 +84,10 @@ private:
     void activateProfileAtIndex(int index);
     void pollAutomaticProfile();
     void toggleGlobalBypass();
+    void showProMenu();
+    void refreshEntitlement(bool requestedByUser);
+    void purchasePro();
+    void updateEntitlementUi(const inputrack::EntitlementResult&);
     void showApplicationMenu();
     void selectAndOpenPlugin(int row);
     void togglePluginBypass(int row);
@@ -99,6 +104,7 @@ private:
     juce::ListBox chainList{"Effect Rack", this};
     juce::TextButton addEffect{"+  Add Effect"};
     juce::TextButton presets{"Presets"};
+    juce::TextButton proButton{"Pro"};
     juce::TextButton appMenu{"..."};
     juce::TextButton scan{"Scan VST3"};
     juce::TextButton monitor{"Monitor off"};
@@ -108,7 +114,9 @@ private:
 #endif
     juce::Label status;
     inputrack::ProfileStore profiles;
+    std::unique_ptr<inputrack::EntitlementService> entitlement;
     juce::String activeProfileName;
+    bool restoreActiveProfile{true};
     juce::String lastExternalApplication;
     std::unique_ptr<juce::AlertWindow> profileDialog;
     std::unique_ptr<GlobalHotkeys> globalHotkeys;
