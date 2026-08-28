@@ -88,6 +88,8 @@ private:
     void refreshEntitlement(bool requestedByUser);
     void purchasePro();
     void updateEntitlementUi(const inputrack::EntitlementResult&);
+    void showSetupAssistant();
+    void runRoutingTest();
     void showApplicationMenu();
     void selectAndOpenPlugin(int row);
     void togglePluginBypass(int row);
@@ -119,8 +121,11 @@ private:
     bool restoreActiveProfile{true};
     juce::String lastExternalApplication;
     std::unique_ptr<juce::AlertWindow> profileDialog;
+    std::unique_ptr<juce::AlertWindow> setupDialog;
     std::unique_ptr<GlobalHotkeys> globalHotkeys;
     int automaticProfilePollTicks{};
+    bool setupAssistantSeen{};
+    bool routingSignalSeen{};
 
 #if !INPUTRACK_STORE_BUILD
     inputrack::UpdateChecker updates;

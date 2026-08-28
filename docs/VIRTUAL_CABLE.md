@@ -40,6 +40,11 @@ installed and licensed separately by its vendor.
    device; without it nothing is published.
 4. In Discord or OBS, select the cable's **capture** endpoint as the microphone.
 
+InputRack opens this flow as a setup assistant on first launch. It can be opened
+again from **... > Setup assistant**. Its routing test verifies that an input is
+selected, a recognised virtual cable is the output, monitoring is enabled, and
+a processed signal has actually reached the output meter.
+
 The status line names both the device being written to and the endpoint to
 select elsewhere, and says so explicitly when monitoring is off or when the
 selected output is not a recognised cable.

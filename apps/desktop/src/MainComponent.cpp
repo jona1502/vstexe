@@ -731,7 +731,9 @@ MainComponent::MainComponent()
     updateEntitlementUi({entitlement->isPro(), {}});
     const juce::Component::SafePointer<MainComponent> safeThis(this);
     juce::MessageManager::callAsync([safeThis] {
-        if (safeThis != nullptr) safeThis->refreshEntitlement(false);
+        if (safeThis == nullptr) return;
+        safeThis->refreshEntitlement(false);
+        if (!safeThis->setupAssistantSeen) safeThis->showSetupAssistant();
     });
     startTimerHz(20);
 #if !INPUTRACK_STORE_BUILD
@@ -908,10 +910,12 @@ void MainComponent::timerCallback()
     // falls back gradually, which reads far more usefully at 10 Hz than a
     // meter that jumps straight back to zero between polls.
     for (int channel = 0; channel < 2; ++channel) {
+        const auto outputPeak = engine.consumeOutputPeak(channel);
         inputMeterDisplay[channel] = juce::jmax(engine.consumeInputPeak(channel),
                                                 inputMeterDisplay[channel] * 0.84f);
-        outputMeterDisplay[channel] = juce::jmax(engine.consumeOutputPeak(channel),
+        outputMeterDisplay[channel] = juce::jmax(outputPeak,
                                                  outputMeterDisplay[channel] * 0.84f);
+        if (setupDialog != nullptr && outputPeak > 0.001f) routingSignalSeen = true;
     }
     if (engine.consumeOutputClipped()) clipIndicatorTicksRemaining = 10;
     else if (clipIndicatorTicksRemaining > 0) --clipIndicatorTicksRemaining;
@@ -1243,6 +1247,8 @@ void MainComponent::updateEntitlementUi(const inputrack::EntitlementResult& resu
 void MainComponent::showApplicationMenu()
 {
     juce::PopupMenu popup;
+    popup.addItem(7, "Setup assistant...");
+    popup.addSeparator();
     popup.addItem(1, engine.isGloballyBypassed() ? "Enable all effects" : "Bypass all effects");
     popup.addItem(2, "Scan VST3 effects...");
     const auto blocked = blockedModules();
@@ -1273,7 +1279,76 @@ void MainComponent::showApplicationMenu()
 #endif
             else if (result == 4) safeThis->rescanBlockedPlugins();
             else if (result == 5) juce::URL("ms-settings:startupapps").launchInDefaultBrowser();
+            else if (result == 7) safeThis->showSetupAssistant();
         });
+}
+
+void MainComponent::showSetupAssistant()
+{
+    if (setupDialog != nullptr) return;
+    setupAssistantSeen = true;
+    routingSignalSeen = false;
+    saveSettings();
+    setupDialog = std::make_unique<juce::AlertWindow>(
+        "Connect InputRack to your apps",
+        "1. Select your physical microphone under INPUT.\n"
+        "2. Select CABLE Input (VB-Audio Virtual Cable) under OUTPUT.\n"
+        "3. Turn Monitor on.\n"
+        "4. Speak into the microphone, then run the routing test.\n\n"
+        "In Discord or OBS, choose CABLE Output as the microphone.",
+        juce::MessageBoxIconType::NoIcon);
+    setupDialog->addButton("Run routing test", 1,
+                           juce::KeyPress(juce::KeyPress::returnKey));
+    setupDialog->addButton("Get VB-CABLE", 2);
+    setupDialog->addButton("Later", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    const juce::Component::SafePointer<MainComponent> safeThis(this);
+    setupDialog->enterModalState(true, juce::ModalCallbackFunction::create(
+        [safeThis](int result) {
+            if (safeThis == nullptr) return;
+            safeThis->setupDialog.reset();
+            if (result == 1) safeThis->runRoutingTest();
+            else if (result == 2)
+                juce::URL("https://vb-audio.com/Cable/").launchInDefaultBrowser();
+        }), false);
+}
+
+void MainComponent::runRoutingTest()
+{
+    juce::AudioDeviceManager::AudioDeviceSetup setup;
+    engine.deviceManager().getAudioDeviceSetup(setup);
+    const auto hasInput = setup.inputDeviceName.isNotEmpty();
+    const auto hasCable = inputrack::PluginChainEngine::looksLikeVirtualCable(
+        setup.outputDeviceName);
+    const auto monitoring = engine.isMonitoringEnabled();
+    const auto passed = hasInput && hasCable && monitoring && routingSignalSeen;
+
+    juce::StringArray checks;
+    checks.add(juce::String(hasInput ? "OK   " : "FIX  ") + "Microphone selected");
+    checks.add(juce::String(hasCable ? "OK   " : "FIX  ") + "Virtual cable selected as output");
+    checks.add(juce::String(monitoring ? "OK   " : "FIX  ") + "Monitor is on");
+    checks.add(juce::String(routingSignalSeen ? "OK   " : "FIX  ")
+               + "Processed signal reached the output");
+    auto message = checks.joinIntoString("\n");
+    if (passed) {
+        const auto capture = inputrack::PluginChainEngine::pairedCaptureName(
+            setup.outputDeviceName);
+        message += "\n\nRouting is ready. Select "
+            + (capture.isNotEmpty() ? capture : "the cable capture endpoint")
+            + " as the microphone in Discord, OBS or another app.";
+        status.setText("Routing test passed.", juce::dontSendNotification);
+    } else {
+        message += "\n\nFix the marked items, speak into the microphone and run the test again.";
+        status.setText("Routing test needs attention.", juce::dontSendNotification);
+    }
+    juce::AlertWindow::showAsync(
+        juce::MessageBoxOptions()
+            .withIconType(passed ? juce::MessageBoxIconType::InfoIcon
+                                 : juce::MessageBoxIconType::WarningIcon)
+            .withTitle(passed ? "Routing test passed" : "Routing test incomplete")
+            .withMessage(message)
+            .withButton("OK")
+            .withAssociatedComponent(this),
+        nullptr);
 }
 
 void MainComponent::selectAndOpenPlugin(int row)
@@ -1408,6 +1483,7 @@ void MainComponent::loadSettings()
     const auto settings = juce::JSON::parse(settingsFile());
     const auto stored = settings.getProperty("pluginSort", "name").toString();
     activeProfileName = settings.getProperty("activeProfile", {}).toString();
+    setupAssistantSeen = static_cast<bool>(settings.getProperty("setupAssistantSeen", false));
     const auto id = stored == "manufacturer" ? 2 : stored == "category" ? 3 : 1;
     // A missing or damaged file must not keep the picker empty, so anything
     // unrecognised falls back to sorting by name.
@@ -1423,6 +1499,7 @@ void MainComponent::saveSettings() const
     juce::DynamicObject::Ptr settings = new juce::DynamicObject();
     settings->setProperty("pluginSort", name);
     settings->setProperty("activeProfile", activeProfileName);
+    settings->setProperty("setupAssistantSeen", setupAssistantSeen);
     settingsFile().replaceWithText(juce::JSON::toString(juce::var(settings.get())));
 }
 
