@@ -2,7 +2,9 @@
 #include <inputrack/IsolatedPluginScanner.h>
 #include <inputrack/PluginBrowsing.h>
 #include <inputrack/PluginChainEngine.h>
+#if !INPUTRACK_STORE_BUILD
 #include <inputrack/UpdateChecker.h>
+#endif
 #include <optional>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <atomic>
@@ -52,9 +54,11 @@ private:
     void showError(const juce::String& title, const juce::String& message);
     void refresh();
     juce::String routingStatus() const;
+#if !INPUTRACK_STORE_BUILD
     void startUpdateCheck(bool requestedByUser);
     void updateCheckFinished(std::optional<inputrack::AvailableUpdate>, const juce::String& error);
     void startUpdateDownload();
+#endif
     void refreshAvailablePlugins();
     void loadPluginCache();
     void savePluginCache();
@@ -90,12 +94,16 @@ private:
     juce::TextButton appMenu{"..."};
     juce::TextButton scan{"Scan VST3"};
     juce::TextButton monitor{"Monitor off"};
+#if !INPUTRACK_STORE_BUILD
     juce::TextButton checkUpdates{"Check for updates"};
     juce::TextButton installUpdate{"Install update"};
+#endif
     juce::Label status;
 
+#if !INPUTRACK_STORE_BUILD
     inputrack::UpdateChecker updates;
     std::optional<inputrack::AvailableUpdate> availableUpdate;
+#endif
 
     // Layout rectangles shared between resized() and paint().
     juce::Rectangle<int> inputPanel, chainPanel, outputPanel, statusStrip, statusTextArea;

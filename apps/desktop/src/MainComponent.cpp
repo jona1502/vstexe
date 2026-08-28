@@ -557,24 +557,32 @@ private:
 };
 
 MainComponent::MainComponent()
-    : juce::Thread("VST3 plug-in scanner"),
-      updates(juce::JUCEApplication::getInstance()->getApplicationVersion(), pluginDataDirectory())
+    : juce::Thread("VST3 plug-in scanner")
+#if !INPUTRACK_STORE_BUILD
+    , updates(juce::JUCEApplication::getInstance()->getApplicationVersion(), pluginDataDirectory())
+#endif
 {
     setLookAndFeel(&lookAndFeel);
     for (auto* component : std::initializer_list<juce::Component*>{
              &inputDevice, &outputDevice, &chainList, &addEffect, &presets, &appMenu,
-             &monitor, &checkUpdates, &installUpdate})
+             &monitor})
         addAndMakeVisible(component);
 
     for (auto* button : std::initializer_list<juce::Button*>{
-             &scan, &monitor, &addEffect, &presets, &appMenu, &checkUpdates, &installUpdate})
+             &scan, &monitor, &addEffect, &presets, &appMenu})
         button->addListener(this);
 
     scan.setComponentID("secondary");
+#if !INPUTRACK_STORE_BUILD
+    addAndMakeVisible(checkUpdates);
+    addAndMakeVisible(installUpdate);
+    checkUpdates.addListener(this);
+    installUpdate.addListener(this);
     checkUpdates.setComponentID("secondary");
     installUpdate.setComponentID("primary");
     // Only shown once a newer release is actually available.
     installUpdate.setVisible(false);
+#endif
     addEffect.setComponentID("secondary");
     presets.setComponentID("secondary");
     appMenu.setComponentID("secondary");
@@ -629,7 +637,9 @@ MainComponent::MainComponent()
     pluginDataDirectory().createDirectory();
     crashMarkerFile().create();
     startTimerHz(20);
+#if !INPUTRACK_STORE_BUILD
     if (updates.isDueForAutomaticCheck()) startUpdateCheck(false);
+#endif
     setSize(1180, 720);
 }
 
@@ -717,12 +727,14 @@ void MainComponent::resized()
     auto strip = statusStrip.reduced(12, 5);
     strip.removeFromLeft(284);
     monitor.setBounds(strip.removeFromRight(112));
+#if !INPUTRACK_STORE_BUILD
     strip.removeFromRight(8);
     checkUpdates.setBounds(strip.removeFromRight(142));
     if (installUpdate.isVisible()) {
         strip.removeFromRight(8);
         installUpdate.setBounds(strip.removeFromRight(158));
     }
+#endif
     statusTextArea = strip.withTrimmedLeft(8).withTrimmedRight(8);
     status.setBounds(statusTextArea);
 
@@ -855,8 +867,10 @@ void MainComponent::buttonClicked(juce::Button* button)
         monitor.repaint();
         status.setText(routingStatus(), juce::dontSendNotification);
     }
+#if !INPUTRACK_STORE_BUILD
     else if (button == &checkUpdates) startUpdateCheck(true);
     else if (button == &installUpdate) startUpdateDownload();
+#endif
 }
 
 void MainComponent::refreshDeviceSelectors()
@@ -944,8 +958,10 @@ void MainComponent::showApplicationMenu()
     popup.addItem(4, "Rescan " + juce::String(blocked.size()) + " skipped plug-in"
                       + (blocked.size() == 1 ? "" : "s"),
                   !blocked.isEmpty());
+#if !INPUTRACK_STORE_BUILD
     popup.addSeparator();
     popup.addItem(3, "Check for updates");
+#endif
     const juce::Component::SafePointer<MainComponent> safeThis(this);
     popup.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&appMenu),
         [safeThis](int result) {
@@ -956,7 +972,9 @@ void MainComponent::showApplicationMenu()
                 safeThis->chainList.repaint();
             }
             else if (result == 2) safeThis->showPluginBrowser();
+#if !INPUTRACK_STORE_BUILD
             else if (result == 3) safeThis->startUpdateCheck(true);
+#endif
             else if (result == 4) safeThis->rescanBlockedPlugins();
         });
 }
@@ -1260,6 +1278,7 @@ void MainComponent::changeListenerCallback(juce::ChangeBroadcaster*)
                    juce::dontSendNotification);
 }
 
+#if !INPUTRACK_STORE_BUILD
 /*
  * Update work reports through the same status label as everything else, so a
  * check never steals the routing information for longer than it takes to
@@ -1321,6 +1340,7 @@ void MainComponent::startUpdateDownload()
         juce::JUCEApplication::getInstance()->systemRequestedQuit();
     });
 }
+#endif
 
 /*
  * The processed chain leaves InputRack through the selected output device, so

@@ -24,6 +24,10 @@ cmake --preset windows-release
 cmake --build --preset windows-release
 ctest --preset windows-release
 .\installer\windows\build-installer.ps1 -Version 0.1.0
+. .\scripts\dev-shell.ps1
+cmake --preset windows-store
+cmake --build --preset windows-store
+ctest --preset windows-store
 .\installer\windows\build-msix.ps1 -Version 0.1.0
 ```
 
@@ -32,6 +36,12 @@ ctest --preset windows-release
 `build-msix.ps1` creates an unsigned, full-trust Windows 11 MSIX containing
 `InputRack.exe` and its crash-isolated scanner. The package deliberately has no
 kernel driver. Microsoft signs the package after Store certification.
+
+The `windows-store` preset defines `INPUTRACK_STORE_BUILD=ON`. This removes the
+GitHub release checker and installer launcher from the packaged application;
+Store updates replace them. User state remains in `%APPDATA%\InputRack`, outside
+the immutable package, so settings, scan results, recovery state and presets
+survive an MSIX update and can be shared with an earlier direct installation.
 
 The manifest identity must exactly match the values assigned in Partner Center.
 Set these GitHub Actions repository variables before submitting a CI package:

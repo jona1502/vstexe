@@ -22,14 +22,28 @@
         "INPUTRACK_BUILD_TESTS": "ON"
       },
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "windows-store",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/windows-store",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded",
+        "INPUTRACK_BUILD_TESTS": "ON",
+        "INPUTRACK_STORE_BUILD": "ON"
+      },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
     }
   ],
   "buildPresets": [
     { "name": "windows-debug", "configurePreset": "windows-debug" },
-    { "name": "windows-release", "configurePreset": "windows-release" }
+    { "name": "windows-release", "configurePreset": "windows-release" },
+    { "name": "windows-store", "configurePreset": "windows-store" }
   ],
   "testPresets": [
     { "name": "windows-debug", "configurePreset": "windows-debug", "output": { "outputOnFailure": true } },
-    { "name": "windows-release", "configurePreset": "windows-release", "output": { "outputOnFailure": true } }
+    { "name": "windows-release", "configurePreset": "windows-release", "output": { "outputOnFailure": true } },
+    { "name": "windows-store", "configurePreset": "windows-store", "output": { "outputOnFailure": true } }
   ]
 }

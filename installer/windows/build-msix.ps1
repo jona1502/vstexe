@@ -15,7 +15,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 if ([string]::IsNullOrWhiteSpace($BuildDirectory)) {
-    $BuildDirectory = Join-Path $repositoryRoot 'build\windows-release'
+    $BuildDirectory = Join-Path $repositoryRoot 'build\windows-store'
 }
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $repositoryRoot 'out\windows'
@@ -27,6 +27,13 @@ foreach ($binary in @($application, $scanner)) {
     if (-not (Test-Path -LiteralPath $binary)) {
         throw "Release binary not found at $binary. Build the windows-release configuration first."
     }
+}
+
+$cache = Join-Path $BuildDirectory 'CMakeCache.txt'
+$isStoreBuild = (Test-Path -LiteralPath $cache) -and
+    (Select-String -LiteralPath $cache -Pattern '^INPUTRACK_STORE_BUILD:BOOL=ON$' -Quiet)
+if (-not $isStoreBuild) {
+    throw "The build at $BuildDirectory is not configured with INPUTRACK_STORE_BUILD=ON."
 }
 
 $makeAppx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" `

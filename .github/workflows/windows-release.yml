@@ -44,6 +44,20 @@ jobs:
         shell: pwsh
         run: cmake --build build/windows-release-ci --config Release --parallel
 
+      - name: Configure Microsoft Store release
+        shell: pwsh
+        run: >-
+          cmake -S . -B build/windows-store-ci
+          -G "Visual Studio 17 2022" -A x64
+          "-DINPUTRACK_VERSION=$env:INPUTRACK_VERSION"
+          -DINPUTRACK_BUILD_TESTS=OFF
+          -DINPUTRACK_STORE_BUILD=ON
+          -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+
+      - name: Build Microsoft Store release
+        shell: pwsh
+        run: cmake --build build/windows-store-ci --config Release --parallel
+
       - name: Run tests
         shell: pwsh
         run: ctest --test-dir build/windows-release-ci -C Release --output-on-failure
@@ -64,7 +78,7 @@ jobs:
         run: >-
           .\installer\windows\build-msix.ps1
           -Version $env:INPUTRACK_VERSION
-          -BuildDirectory build/windows-release-ci
+          -BuildDirectory build/windows-store-ci
           -IdentityName "${{ vars.INPUTRACK_STORE_IDENTITY_NAME || 'InputRack.Dev' }}"
           -Publisher "${{ vars.INPUTRACK_STORE_PUBLISHER || 'CN=InputRack Development' }}"
 

@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(INPUTRACK_BUILD_TESTS "Build InputRack tests" ON)
+option(INPUTRACK_STORE_BUILD "Build the Microsoft Store package variant" OFF)
 set(INPUTRACK_JUCE_SOURCE_DIR "" CACHE PATH "Path to a local JUCE checkout")
 
 if(INPUTRACK_JUCE_SOURCE_DIR)
