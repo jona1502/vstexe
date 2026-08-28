@@ -523,6 +523,8 @@ public:
 
     void mouseDown(const juce::MouseEvent&) override
     {
+        // The reorder from the previous drag has long since been applied.
+        reorderPending = false;
         owner.chainList.selectRow(row);
     }
 
