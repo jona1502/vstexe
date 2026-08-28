@@ -54,9 +54,17 @@ package validation reproducible; they are not a production Store identity.
 
 The commercial configuration is versioned in `store/product.json`: the app is
 free and Pro is a durable, one-time add-on with offer token `inputrack.pro`.
-The regular target price is EUR 39.99, with EUR 29.99 for the first 30 days
+The regular target price is EUR 29.99, with EUR 19.99 for the first 30 days
 after launch. Partner Center maps these targets to its regional price tiers and
 handles taxes, refunds and Microsoft's Store fee.
+
+Because Partner Center exposes its native free-trial selector only for
+subscriptions, the 14-day Pro trial is application-managed. It starts only on
+request and stores its first-use timestamp for the current Windows user under
+`HKCU\Software\InputRack`. The marker survives a normal app uninstall, but this
+is intentionally lightweight licensing: preventing deliberate registry resets
+would require an account-backed licensing service. The permanent purchase and
+restore remain authoritative Microsoft Store entitlements.
 
 Create the app and add-on in Partner Center, then set these repository variables:
 

@@ -87,6 +87,7 @@ private:
     void showProMenu();
     void refreshEntitlement(bool requestedByUser);
     void purchasePro();
+    void startProTrial();
     void updateEntitlementUi(const inputrack::EntitlementResult&);
     void showSetupAssistant();
     void runRoutingTest();
@@ -124,6 +125,7 @@ private:
     std::unique_ptr<juce::AlertWindow> setupDialog;
     std::unique_ptr<GlobalHotkeys> globalHotkeys;
     int automaticProfilePollTicks{};
+    int trialRefreshTicks{};
     bool setupAssistantSeen{};
     bool routingSignalSeen{};
 

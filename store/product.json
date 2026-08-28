@@ -9,9 +9,9 @@
     "offerToken": "inputrack.pro",
     "billing": "one-time",
     "includedMajorVersions": [1],
-    "regularPrice": { "amount": 39.99, "currency": "EUR" },
+    "regularPrice": { "amount": 29.99, "currency": "EUR" },
     "launchPrice": {
-      "amount": 29.99,
+      "amount": 19.99,
       "currency": "EUR",
       "durationDays": 30,
       "startsOnFirstPublicRelease": true
@@ -22,5 +22,12 @@
       "Global bypass and profile hotkeys",
       "Start with Windows"
     ]
+  },
+  "trial": {
+    "managedBy": "application",
+    "durationDays": 14,
+    "scope": "Windows user",
+    "startsOnUserRequest": true,
+    "note": "Partner Center only offers native free trials for subscriptions; the one-time trial marker is stored locally."
   }
 }

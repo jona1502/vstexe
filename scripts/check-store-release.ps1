@@ -41,8 +41,14 @@ if (@($product.pro.includedMajorVersions).Count -ne 1 -or
     throw 'The Pro purchase must include the agreed 1.x update line.'
 }
 if ($product.pro.offerToken -ne 'inputrack.pro') { throw 'Unexpected Pro offer token in store/product.json.' }
-if ($product.pro.regularPrice.currency -ne 'EUR' -or $product.pro.regularPrice.amount -ne 39.99) {
-    throw 'The regular Pro price must match the agreed EUR 39.99 model.'
+if ($product.pro.regularPrice.currency -ne 'EUR' -or $product.pro.regularPrice.amount -ne 29.99) {
+    throw 'The regular Pro price must match the agreed EUR 29.99 model.'
+}
+if ($product.pro.launchPrice.currency -ne 'EUR' -or $product.pro.launchPrice.amount -ne 19.99) {
+    throw 'The launch Pro price must match the agreed EUR 19.99 model.'
+}
+if ($product.trial.managedBy -ne 'application' -or $product.trial.durationDays -ne 14) {
+    throw 'The Pro trial must be the agreed 14-day application-managed trial.'
 }
 
 $commerceBuild = Get-Content -LiteralPath (Join-Path $repositoryRoot 'commerce\CMakeLists.txt') -Raw
@@ -62,4 +68,4 @@ if (-not $AllowIncompleteLegal -and $siteData -match "TODO:") {
 Write-Host 'Store release configuration is internally consistent.'
 Write-Host "Identity: $IdentityName"
 Write-Host "Product:  $ProductId"
-Write-Host 'Model:    Free app + EUR 39.99 durable Pro add-on (EUR 29.99 launch offer)'
+Write-Host 'Model:    Free app + 14-day Pro trial + EUR 29.99 durable Pro add-on (EUR 19.99 launch offer)'

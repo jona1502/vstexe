@@ -728,7 +728,7 @@ MainComponent::MainComponent()
     recoverFromUncleanShutdown();
     pluginDataDirectory().createDirectory();
     crashMarkerFile().create();
-    updateEntitlementUi({entitlement->isPro(), {}});
+    updateEntitlementUi(entitlement->state());
     const juce::Component::SafePointer<MainComponent> safeThis(this);
     juce::MessageManager::callAsync([safeThis] {
         if (safeThis == nullptr) return;
@@ -906,6 +906,14 @@ void MainComponent::timerCallback()
         automaticProfilePollTicks = 0;
         pollAutomaticProfile();
     }
+    if (entitlement->state().trial) {
+        if (++trialRefreshTicks >= 20 * 60 * 60) {
+            trialRefreshTicks = 0;
+            refreshEntitlement(false);
+        }
+    } else {
+        trialRefreshTicks = 0;
+    }
     // Peak-hold with decay: a block's peak snaps the bar up instantly and it
     // falls back gradually, which reads far more usefully at 10 Hz than a
     // meter that jumps straight back to zero between polls.
@@ -1046,7 +1054,7 @@ void MainComponent::showPluginBrowser()
 
 void MainComponent::showPresetMenu()
 {
-    if (!entitlement->isPro()) {
+    if (!entitlement->state().hasProAccess()) {
         showProMenu();
         return;
     }
@@ -1160,7 +1168,7 @@ void MainComponent::activateProfileAtIndex(int index)
 
 void MainComponent::pollAutomaticProfile()
 {
-    if (!entitlement->isPro()) return;
+    if (!entitlement->state().hasProAccess()) return;
     const auto executable = foregroundExecutable();
     if (executable.isEmpty() || executable.equalsIgnoreCase("InputRack.exe")) return;
     lastExternalApplication = executable;
@@ -1181,15 +1189,24 @@ void MainComponent::toggleGlobalBypass()
 void MainComponent::showProMenu()
 {
     juce::PopupMenu popup;
-    if (entitlement->isPro()) popup.addItem(1, "InputRack Pro is active", false, true);
-    else popup.addItem(1, "Buy InputRack Pro", !entitlement->isBusy());
+    const auto current = entitlement->state();
+    if (current.permanent) popup.addItem(1, "InputRack Pro is active", false, true);
+    else {
+        if (current.trial)
+            popup.addItem(4, "Pro trial: " + juce::String(current.trialDaysRemaining)
+                                 + " day(s) remaining", false, true);
+        else if (current.trialAvailable)
+            popup.addItem(3, "Start 14-day free trial", !entitlement->isBusy());
+        popup.addItem(1, "Buy InputRack Pro", !entitlement->isBusy());
+    }
     popup.addItem(2, "Restore purchases", !entitlement->isBusy());
     const juce::Component::SafePointer<MainComponent> safeThis(this);
     popup.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&proButton),
         [safeThis](int result) {
             if (safeThis == nullptr) return;
-            if (result == 1 && !safeThis->entitlement->isPro()) safeThis->purchasePro();
+            if (result == 1 && !safeThis->entitlement->state().permanent) safeThis->purchasePro();
             else if (result == 2) safeThis->refreshEntitlement(true);
+            else if (result == 3) safeThis->startProTrial();
         });
 }
 
@@ -1205,8 +1222,9 @@ void MainComponent::refreshEntitlement(bool requestedByUser)
         if (safeThis == nullptr) return;
         safeThis->updateEntitlementUi(result);
         if (requestedByUser && result.message.isEmpty())
-            safeThis->status.setText(result.pro ? "InputRack Pro purchase restored."
-                                                : "No InputRack Pro purchase was found.",
+            safeThis->status.setText(result.permanent ? "InputRack Pro purchase restored."
+                : result.trial ? "InputRack Pro trial restored."
+                               : "No InputRack Pro purchase or trial was found.",
                                      juce::dontSendNotification);
     });
 }
@@ -1224,12 +1242,27 @@ void MainComponent::purchasePro()
     });
 }
 
+void MainComponent::startProTrial()
+{
+    if (entitlement->isBusy() || entitlement->state().hasProAccess()) return;
+    proButton.setEnabled(false);
+    status.setText("Starting your 14-day Pro trial...", juce::dontSendNotification);
+    void* window = getPeer() != nullptr ? getPeer()->getNativeHandle() : nullptr;
+    const juce::Component::SafePointer<MainComponent> safeThis(this);
+    entitlement->startTrial(window, [safeThis](inputrack::EntitlementResult result) {
+        if (safeThis == nullptr) return;
+        safeThis->updateEntitlementUi(result);
+    });
+}
+
 void MainComponent::updateEntitlementUi(const inputrack::EntitlementResult& result)
 {
     proButton.setEnabled(true);
-    proButton.setButtonText(result.pro ? "Pro  ✓" : "Get Pro");
-    proButton.setComponentID(result.pro ? "secondary" : "primary");
-    if (result.pro && globalHotkeys == nullptr) {
+    proButton.setButtonText(result.permanent ? "Pro  ✓"
+        : result.trial ? "Trial " + juce::String(result.trialDaysRemaining) + "d"
+                       : "Get Pro");
+    proButton.setComponentID(result.hasProAccess() ? "secondary" : "primary");
+    if (result.hasProAccess() && globalHotkeys == nullptr) {
         globalHotkeys = std::make_unique<GlobalHotkeys>(
             [this] { toggleGlobalBypass(); },
             [this](int index) { activateProfileAtIndex(index); });
@@ -1237,7 +1270,7 @@ void MainComponent::updateEntitlementUi(const inputrack::EntitlementResult& resu
             if (const auto profile = profiles.find(activeProfileName); profile.has_value())
                 activateProfile(*profile);
         }
-    } else if (!result.pro) {
+    } else if (!result.hasProAccess()) {
         globalHotkeys.reset();
     }
     if (result.message.isNotEmpty()) status.setText(result.message, juce::dontSendNotification);
@@ -1255,8 +1288,9 @@ void MainComponent::showApplicationMenu()
     popup.addItem(4, "Rescan " + juce::String(blocked.size()) + " skipped plug-in"
                       + (blocked.size() == 1 ? "" : "s"),
                   !blocked.isEmpty());
-    popup.addItem(5, "Windows startup settings...", entitlement->isPro());
-    popup.addItem(6, entitlement->isPro()
+    const auto hasProAccess = entitlement->state().hasProAccess();
+    popup.addItem(5, "Windows startup settings...", hasProAccess);
+    popup.addItem(6, hasProAccess
                          ? "Hotkeys: Ctrl+Alt+B, Ctrl+Alt+1..9"
                          : "Hotkeys: Ctrl+Alt+B, Ctrl+Alt+1..9 (Pro)",
                   false);

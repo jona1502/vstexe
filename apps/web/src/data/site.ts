@@ -35,8 +35,8 @@ export const pricing = [
     features: ['VST3 hosting and scanning', 'Rack preset import/export', 'Meters and routing assistant'],
   },
   {
-    name: 'Pro', price: '€39.99', billing: 'one time', featured: true,
-    detail: 'Faster daily workflows with no subscription and all 1.x updates included.',
+    name: 'Pro', price: '€29.99', billing: 'one time', featured: true,
+    detail: 'Try every Pro workflow free for 14 days. No subscription; all 1.x updates included.',
     features: ['Named profiles', 'Automatic app profiles', 'Global hotkeys', 'Start with Windows'],
   },
 ] as const;
