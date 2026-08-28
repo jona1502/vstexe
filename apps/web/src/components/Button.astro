@@ -1,5 +1,7 @@
 ---
-interface Props {
+import type { HTMLAttributes } from 'astro/types';
+
+interface Props extends Omit<HTMLAttributes<'a'>, 'href' | 'class'> {
   href: string;
   variant?: 'primary' | 'secondary' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
@@ -7,7 +9,7 @@ interface Props {
   class?: string;
 }
 
-const { href, variant = 'primary', size = 'md', external = false, class: className = '' } = Astro.props;
+const { href, variant = 'primary', size = 'md', external = false, class: className = '', ...rest } = Astro.props;
 
 const base =
   'inline-flex items-center justify-center gap-2 rounded-full font-medium whitespace-nowrap transition duration-200';
@@ -30,6 +32,6 @@ const rel = external ? 'noopener noreferrer' : undefined;
 const target = external ? '_blank' : undefined;
 ---
 
-<a href={href} rel={rel} target={target} class:list={[base, variants[variant], sizes[size], className]}>
+<a href={href} rel={rel} target={target} class:list={[base, variants[variant], sizes[size], className]} {...rest}>
   <slot />
 </a>

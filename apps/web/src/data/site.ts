@@ -7,9 +7,9 @@ export const site = {
   tagline: 'Your input. Your effects. Everywhere.',
   description:
     'Route your physical microphone through your own 64-bit VST3 effects and send the processed signal wherever you need it, through a virtual audio cable.',
-  repo: 'https://github.com/jona1502/vstexe',
-  releases: 'https://github.com/jona1502/vstexe/releases',
-  releasesApi: 'https://api.github.com/repos/jona1502/vstexe/releases/latest',
+  repo: 'https://github.com/jona1502/inputrack',
+  releases: 'https://github.com/jona1502/inputrack/releases',
+  releasesApi: 'https://api.github.com/repos/jona1502/inputrack/releases/latest',
   /**
    * Windows lets only a driver publish a microphone, and ours is not
    * release-signed yet. Until then the chain is published through a virtual

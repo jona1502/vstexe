@@ -21,9 +21,9 @@ import Windows from './icons/Windows.astro';
       </p>
 
       <div class="mt-10 flex flex-col items-center gap-3 sm:flex-row">
-        <Button href="#download" size="lg">
+        <Button href={site.releases} size="lg" data-download-link>
           <Windows class="size-[15px]" />
-          Download for Windows
+          <span data-download-label>Download for Windows</span>
         </Button>
         <Button href={site.repo} variant="secondary" size="lg" external>
           <GitHub class="size-[15px]" />

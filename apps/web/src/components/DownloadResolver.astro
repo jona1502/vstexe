@@ -1,0 +1,17 @@
+---
+/**
+ * Renders nothing; it only upgrades the download buttons on whichever page it
+ * is mounted. Lives in the layout so the navigation button works on the legal
+ * pages too, where there is no download section to scroll to.
+ */
+---
+
+<script>
+  import { resolveLatestDownload, revealNonWindowsNote } from '../scripts/download';
+
+  revealNonWindowsNote();
+
+  void resolveLatestDownload().catch(() => {
+    /* Offline, rate limited or no release yet: the releases link still works. */
+  });
+</script>

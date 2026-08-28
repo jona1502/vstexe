@@ -2,6 +2,7 @@
 import '@fontsource-variable/dm-sans';
 import '@fontsource-variable/jetbrains-mono';
 import '../styles/global.css';
+import DownloadResolver from '../components/DownloadResolver.astro';
 import { site } from '../data/site';
 
 interface Props {
@@ -41,6 +42,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     </div>
 
     <slot />
+
+    <DownloadResolver />
 
     <style>
       /* Static film grain, inlined so the page stays request-free. */
