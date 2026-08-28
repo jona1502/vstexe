@@ -888,8 +888,18 @@ void MainComponent::timerCallback()
             current = pluginBeingScanned;
         }
         const auto percent = juce::roundToInt(scanProgress.load() * 100.0f);
-        status.setText("Scanning VST3: " + juce::String(percent) + "%  " + current,
-                       juce::dontSendNotification);
+        auto message = "Scanning VST3: " + juce::String(percent) + "%  " + current;
+        /*
+         * A shell module houses a whole plug-in pack and has to be described
+         * one housed effect at a time, so the strip can sit on one name for
+         * minutes. Nothing distinguishes a shell up front; dwelling on it is
+         * the only signal, and saying so beats looking frozen.
+         */
+        const auto dwellMs = juce::Time::getMillisecondCounterHiRes()
+            - moduleScanStartedAt.load();
+        if (dwellMs > 15000.0)
+            message += "   (plug-in packs take several minutes)";
+        status.setText(message, juce::dontSendNotification);
     }
 
     if (scanFinished.exchange(false)) {
@@ -1101,6 +1111,7 @@ void MainComponent::scanPlugins()
         return;
     }
     scanTimeouts->clear();
+    moduleScanStartedAt.store(juce::Time::getMillisecondCounterHiRes());
     engine.knownPlugins().setCustomScanner(
         std::make_unique<inputrack::IsolatedPluginScanner>(
             helper, inputrack::IsolatedPluginScanner::defaultTimeoutMilliseconds,
@@ -1146,8 +1157,15 @@ void MainComponent::run()
         juce::String current;
         while (!threadShouldExit()) {
             {
+                // VST3 identifies a module by its path, which is too long for
+                // the status strip and buries the name the user is waiting on.
+                const auto next =
+                    moduleDisplayName(scanner.getNextPluginFileThatWillBeScanned());
                 const juce::ScopedLock lock(scanStatusLock);
-                pluginBeingScanned = scanner.getNextPluginFileThatWillBeScanned();
+                if (next != pluginBeingScanned) {
+                    pluginBeingScanned = next;
+                    moduleScanStartedAt.store(juce::Time::getMillisecondCounterHiRes());
+                }
             }
             scanProgress.store(scanner.getProgress());
             if (!scanner.scanNextFile(true, current)) break;

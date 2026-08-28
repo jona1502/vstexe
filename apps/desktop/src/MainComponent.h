@@ -112,6 +112,8 @@ private:
     std::atomic<bool> scanFinished{};
     juce::CriticalSection scanStatusLock;
     juce::String pluginBeingScanned;
+    /** When the module named above went in, so a long one can say so. */
+    std::atomic<double> moduleScanStartedAt{};
     std::shared_ptr<inputrack::ScanTimeouts> scanTimeouts{
         std::make_shared<inputrack::ScanTimeouts>()};
     std::unique_ptr<juce::FileChooser> chooser;
