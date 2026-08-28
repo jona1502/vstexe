@@ -59,6 +59,15 @@ jobs:
           -Version $env:INPUTRACK_VERSION
           -BuildDirectory build/windows-release-ci
 
+      - name: Build Microsoft Store MSIX
+        shell: pwsh
+        run: >-
+          .\installer\windows\build-msix.ps1
+          -Version $env:INPUTRACK_VERSION
+          -BuildDirectory build/windows-release-ci
+          -IdentityName "${{ vars.INPUTRACK_STORE_IDENTITY_NAME || 'InputRack.Dev' }}"
+          -Publisher "${{ vars.INPUTRACK_STORE_PUBLISHER || 'CN=InputRack Development' }}"
+
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
