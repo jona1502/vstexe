@@ -456,9 +456,15 @@ public:
         startTimerHz(12);
     }
 
+    /*
+     * Rebinding unconditionally, even when the index has not moved: the row a
+     * recycled component lands on is rarely the plug-in it was bound to. A
+     * component built for a row past the end of a short rack holds no
+     * parameters at all, and one that outlives a removal holds pointers into
+     * a plug-in that has already been destroyed.
+     */
     void setRow(int newRow)
     {
-        if (row == newRow) return;
         row = newRow;
         bindParameters();
     }
@@ -820,11 +826,21 @@ void MainComponent::resized()
 
 int MainComponent::getNumRows() { return engine.pluginCount(); }
 
+/*
+ * ListBox keeps a few more row components than the rack has rows and offers
+ * them here for every one of those positions, so the rows past the end have
+ * to be turned down rather than filled with a component that has no plug-in
+ * behind it.
+ */
 juce::Component* MainComponent::refreshComponentForRow(int row, bool selected,
                                                         juce::Component* existing)
 {
-    auto* component = dynamic_cast<PluginRowComponent*>(existing);
+    std::unique_ptr<juce::Component> recycled(existing);
+    if (!juce::isPositiveAndBelow(row, engine.pluginCount())) return nullptr;
+
+    auto* component = dynamic_cast<PluginRowComponent*>(recycled.get());
     if (component == nullptr) component = new PluginRowComponent(*this, row);
+    else recycled.release();
     component->setRow(row);
     component->setSelected(selected);
     return component;
