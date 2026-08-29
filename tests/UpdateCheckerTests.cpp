@@ -92,6 +92,14 @@ int main()
     expect(!Checker::parseLatestRelease(release("v0.1.5", checksumAsset), "0.1.4").has_value(),
            "a release without an installer is refused");
 
+    juce::String metadataError;
+    Checker::parseLatestRelease(release("v0.1.5", setupAsset), "0.1.4", &metadataError);
+    expect(metadataError.isNotEmpty(), "missing release assets report a metadata error");
+    metadataError.clear();
+    Checker::parseLatestRelease(release("v0.1.4", setupAsset + "," + checksumAsset),
+                                "0.1.4", &metadataError);
+    expect(metadataError.isEmpty(), "being up to date is not reported as a metadata error");
+
     // A tampered payload must not be able to redirect the download.
     const auto offSite =
         asset("InputRack-0.1.5-Windows-x64-Setup.exe", "https://example.com/evil.exe");
@@ -118,6 +126,9 @@ int main()
 
     expect(!Checker::parseLatestRelease("not json at all", "0.1.4").has_value(),
            "malformed payloads yield no update");
+    metadataError.clear();
+    Checker::parseLatestRelease("not json at all", "0.1.4", &metadataError);
+    expect(metadataError.isNotEmpty(), "malformed payloads report a metadata error");
     expect(!Checker::parseLatestRelease("{}", "0.1.4").has_value(),
            "a payload without a tag yields no update");
 

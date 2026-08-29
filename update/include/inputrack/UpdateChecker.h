@@ -42,9 +42,10 @@ public:
      */
     static int compareVersions(const juce::String& a, const juce::String& b);
 
-    /** Extracts an update from a GitHub release payload, or nothing when current. */
+    /** Extracts an update, reports invalid metadata, or returns nothing when current. */
     static std::optional<AvailableUpdate> parseLatestRelease(const juce::String& json,
-                                                             const juce::String& currentVersion);
+                                                             const juce::String& currentVersion,
+                                                             juce::String* metadataError = nullptr);
 
     /** Parses the exact checksum-file format emitted by the release workflow. */
     static std::optional<juce::String> parseSha256(const juce::String& contents,

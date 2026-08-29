@@ -107,21 +107,31 @@ int UpdateChecker::compareVersions(const juce::String& a, const juce::String& b)
 }
 
 std::optional<AvailableUpdate> UpdateChecker::parseLatestRelease(const juce::String& json,
-                                                                 const juce::String& currentVersion)
+                                                                 const juce::String& currentVersion,
+                                                                 juce::String* metadataError)
 {
-    const auto release = juce::JSON::parse(json);
-    const auto tag = release.getProperty("tag_name", {}).toString();
-    if (!tag.startsWithChar('v')
-        || static_cast<bool>(release.getProperty("draft", false))
-        || static_cast<bool>(release.getProperty("prerelease", false)))
+    const auto fail = [metadataError](const juce::String& message)
+        -> std::optional<AvailableUpdate> {
+        if (metadataError != nullptr) *metadataError = message;
         return {};
+    };
+
+    if (metadataError != nullptr) metadataError->clear();
+    const auto release = juce::JSON::parse(json);
+    if (!release.isObject()) return fail("GitHub returned invalid release metadata.");
+
+    const auto tag = release.getProperty("tag_name", {}).toString();
+    if (!tag.startsWithChar('v')) return fail("The latest release has an invalid version tag.");
+    if (static_cast<bool>(release.getProperty("draft", false))
+        || static_cast<bool>(release.getProperty("prerelease", false)))
+        return fail("The latest release is not eligible for the stable update channel.");
 
     const auto version = tag.substring(1);
-    if (!isSemanticVersion(version)) return {};
+    if (!isSemanticVersion(version)) return fail("The latest release has an invalid version tag.");
     if (compareVersions(version, currentVersion) <= 0) return {};
 
     const auto* assets = release.getProperty("assets", {}).getArray();
-    if (assets == nullptr) return {};
+    if (assets == nullptr) return fail("The latest release has no usable asset list.");
 
     AvailableUpdate update;
     update.version = version;
@@ -131,18 +141,21 @@ std::optional<AvailableUpdate> UpdateChecker::parseLatestRelease(const juce::Str
         const auto name = asset.getProperty("name", {}).toString();
         const auto url = asset.getProperty("browser_download_url", {}).toString();
         if (name == checksumName && isExpectedAssetUrl(url, version, checksumName)) {
-            if (update.checksumUrl.isNotEmpty()) return {};
+            if (update.checksumUrl.isNotEmpty())
+                return fail("The latest release contains duplicate checksum assets.");
             update.checksumUrl = url;
         }
         else if (name == installerName && isExpectedAssetUrl(url, version, installerName)) {
-            if (update.downloadUrl.isNotEmpty()) return {};
+            if (update.downloadUrl.isNotEmpty())
+                return fail("The latest release contains duplicate installer assets.");
             update.downloadUrl = url;
         }
     }
 
-    // Without both halves the download could not be verified, so a release
-    // missing either is reported as no update rather than an unchecked one.
-    if (update.downloadUrl.isEmpty() || update.checksumUrl.isEmpty()) return {};
+    // Without both halves the download could not be verified, so distinguish
+    // an incomplete release from a successful "up to date" result.
+    if (update.downloadUrl.isEmpty() || update.checksumUrl.isEmpty())
+        return fail("The latest release is missing its verified Windows installer assets.");
     return update;
 }
 
@@ -195,8 +208,8 @@ void UpdateChecker::runCheck()
 
     std::optional<AvailableUpdate> found;
     if (error.isEmpty()) {
-        found = parseLatestRelease(payload, currentVersion);
-        recordCheckTime();
+        found = parseLatestRelease(payload, currentVersion, &error);
+        if (error.isEmpty()) recordCheckTime();
     }
 
     juce::MessageManager::callAsync([callback = checkCallback, found, error] {
