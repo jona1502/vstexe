@@ -5,9 +5,9 @@
 namespace inputrack {
 namespace {
 constexpr const char* releasesApi =
-    "https://api.github.com/repos/jona1502/vstexe/releases/latest";
+    "https://api.github.com/repos/jona1502/inputrack/releases/latest";
 constexpr const char* releaseDownloadRoot =
-    "https://github.com/jona1502/vstexe/releases/download/v";
+    "https://github.com/jona1502/inputrack/releases/download/v";
 constexpr int connectionTimeoutMs = 15000;
 constexpr juce::int64 checkIntervalMs = 24 * 60 * 60 * 1000;
 
