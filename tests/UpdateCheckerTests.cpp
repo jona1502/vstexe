@@ -23,10 +23,10 @@ juce::String asset(const juce::String& name, const juce::String& url)
 
 const juce::String setupAsset =
     asset("InputRack-0.1.5-Windows-x64-Setup.exe",
-          "https://github.com/jona1502/vstexe/releases/download/v0.1.5/InputRack-0.1.5-Windows-x64-Setup.exe");
+          "https://github.com/jona1502/inputrack/releases/download/v0.1.5/InputRack-0.1.5-Windows-x64-Setup.exe");
 const juce::String checksumAsset =
     asset("InputRack-0.1.5-Windows-x64-Setup.exe.sha256",
-          "https://github.com/jona1502/vstexe/releases/download/v0.1.5/InputRack-0.1.5-Windows-x64-Setup.exe.sha256");
+          "https://github.com/jona1502/inputrack/releases/download/v0.1.5/InputRack-0.1.5-Windows-x64-Setup.exe.sha256");
 }
 
 int main()
@@ -84,17 +84,17 @@ int main()
 
     const auto wrongReleasePath =
         asset("InputRack-0.1.5-Windows-x64-Setup.exe",
-              "https://github.com/jona1502/vstexe/releases/download/v0.1.4/InputRack-0.1.5-Windows-x64-Setup.exe");
+              "https://github.com/jona1502/inputrack/releases/download/v0.1.4/InputRack-0.1.5-Windows-x64-Setup.exe");
     expect(!Checker::parseLatestRelease(
                release("v0.1.5", wrongReleasePath + "," + checksumAsset), "0.1.4").has_value(),
            "an asset from a different release path is refused");
 
     const auto otherSetup =
         asset("OtherProduct-0.1.5-Windows-x64-Setup.exe",
-              "https://github.com/jona1502/vstexe/releases/download/v0.1.5/OtherProduct-0.1.5-Windows-x64-Setup.exe");
+              "https://github.com/jona1502/inputrack/releases/download/v0.1.5/OtherProduct-0.1.5-Windows-x64-Setup.exe");
     const auto otherChecksum =
         asset("OtherProduct-0.1.5-Windows-x64-Setup.exe.sha256",
-              "https://github.com/jona1502/vstexe/releases/download/v0.1.5/OtherProduct-0.1.5-Windows-x64-Setup.exe.sha256");
+              "https://github.com/jona1502/inputrack/releases/download/v0.1.5/OtherProduct-0.1.5-Windows-x64-Setup.exe.sha256");
     expect(!Checker::parseLatestRelease(
                release("v0.1.5", otherSetup + "," + otherChecksum), "0.1.4").has_value(),
            "assets for a different product are ignored");
