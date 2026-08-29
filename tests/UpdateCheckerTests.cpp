@@ -52,6 +52,23 @@ int main()
         expect(found->checksumUrl.endsWith(".sha256"), "the checksum asset is picked");
     }
 
+    // GitHub redirects the repository's old vstexe name to inputrack, but the
+    // release payload contains canonical URLs. Keep a real release-shaped
+    // payload here so a future repository rename cannot silently look current.
+    const auto canonicalSetup = asset(
+        "InputRack-0.1.9-Windows-x64-Setup.exe",
+        "https://github.com/jona1502/inputrack/releases/download/v0.1.9/InputRack-0.1.9-Windows-x64-Setup.exe");
+    const auto canonicalChecksum = asset(
+        "InputRack-0.1.9-Windows-x64-Setup.exe.sha256",
+        "https://github.com/jona1502/inputrack/releases/download/v0.1.9/InputRack-0.1.9-Windows-x64-Setup.exe.sha256");
+    const auto canonicalRelease = Checker::parseLatestRelease(
+        release("v0.1.9", canonicalSetup + "," + canonicalChecksum), "0.1.8");
+    expect(canonicalRelease.has_value(), "the canonical InputRack release URL is accepted");
+    if (canonicalRelease.has_value()) {
+        expect(canonicalRelease->downloadUrl.contains("/jona1502/inputrack/releases/"),
+               "the accepted installer comes from the canonical repository");
+    }
+
     expect(!Checker::parseLatestRelease(
                release("v0.1.4", setupAsset + "," + checksumAsset), "0.1.4").has_value(),
            "the running version is not offered to itself");
