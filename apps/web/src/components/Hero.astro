@@ -1,5 +1,5 @@
 ---
-import { site } from '../data/site';
+import { downloadUrl, site } from '../data/site';
 import Button from './Button.astro';
 import Windows from './icons/Windows.astro';
 ---
@@ -20,9 +20,9 @@ import Windows from './icons/Windows.astro';
       </p>
 
       <div class="mt-10 flex flex-col items-center gap-3 sm:flex-row">
-        <Button href={site.releases} size="lg" data-download-link>
+        <Button href={downloadUrl} size="lg" data-download-link external={Boolean(site.storeUrl)}>
           <Windows class="size-[15px]" />
-          <span data-download-label>Download for Windows</span>
+          <span data-download-label>{site.storeUrl ? 'Get it from Microsoft' : 'Microsoft Store launch pending'}</span>
         </Button>
       </div>
 

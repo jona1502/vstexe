@@ -7,8 +7,6 @@ export const site = {
   tagline: 'Your input. Your effects. Everywhere.',
   description:
     'Route your physical microphone through your own 64-bit VST3 effects and send the processed signal wherever you need it, through a virtual audio cable.',
-  releases: 'https://github.com/jona1502/inputrack/releases',
-  releasesApi: 'https://api.github.com/repos/jona1502/inputrack/releases/latest',
   storeUrl: import.meta.env.PUBLIC_INPUTRACK_STORE_URL ?? '',
   /**
    * Windows lets only a driver publish a microphone, and ours is not
@@ -20,7 +18,7 @@ export const site = {
   cableUrl: 'https://vb-audio.com/Cable/',
 } as const;
 
-export const downloadUrl = site.storeUrl || site.releases;
+export const downloadUrl = site.storeUrl || '#pricing';
 
 export const nav = [
   { label: 'Features', href: '#features' },
@@ -128,7 +126,7 @@ export const footerLinks = [
   {
     heading: 'Download',
     links: [
-      { label: site.storeUrl ? 'Microsoft Store' : 'Windows preview', href: downloadUrl, external: true },
+      { label: site.storeUrl ? 'Microsoft Store' : 'Store launch pending', href: downloadUrl, external: Boolean(site.storeUrl) },
     ],
   },
   {

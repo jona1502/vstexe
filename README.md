@@ -7,9 +7,10 @@ microphone.
 
 ## Download
 
-Windows x64 setup executables are published on the
-[GitHub Releases page](https://github.com/jona1502/vstexe/releases). Each setup
-has a matching SHA-256 checksum file.
+The production application is distributed through the Microsoft Store. The
+base app is free; InputRack Pro is available only as a Store add-on. Direct
+installer builds are development artifacts and are not a supported consumer
+distribution channel.
 
 Publishing the chain requires a virtual audio cable such as
 [VB-CABLE](https://vb-audio.com/Cable/), installed separately. InputRack's own

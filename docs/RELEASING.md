@@ -1,21 +1,13 @@
 # Releasing InputRack
 
-## Windows installer
+## Internal Windows installer
 
-The `Windows release` GitHub Actions workflow builds the statically linked x64
-desktop application, runs all tests, creates an Inno Setup executable, and emits
-a SHA-256 checksum. A manual workflow run stores both files as a downloadable
-workflow artifact. A semantic version tag publishes them as GitHub Release
-assets.
-
-```powershell
-git tag v0.1.0
-git push origin main
-git push origin v0.1.0
-```
-
-Tags must follow `vMAJOR.MINOR.PATCH`. The corresponding installer is named
-`InputRack-MAJOR.MINOR.PATCH-Windows-x64-Setup.exe`.
+The `Windows release` GitHub Actions workflow is manual. It builds the statically
+linked x64 desktop application, runs all tests, and stores the direct installer,
+checksum and development-identity MSIX as workflow artifacts for internal QA.
+It never publishes GitHub Release assets. Production distribution is exclusively
+through the Microsoft Store so the durable Pro entitlement cannot be bypassed by
+a public direct build with development access enabled.
 
 For a local package build, first build the release preset and then run:
 
@@ -86,11 +78,12 @@ The repository intentionally cannot supply the publisher identity, Product ID,
 legal address or final regional Partner Center prices; those are external
 account data and the gate fails clearly until they are provided.
 
-## In-app updates
+## Legacy direct-build updates
 
-The application checks for newer releases itself, so a tagged release reaches an
-installed copy without a manual download. `UpdateChecker` (`update/`) queries the
-public releases API at most once a day, records the timestamp in
+Direct builds retain the legacy GitHub update checker for compatibility with the
+public previews released through version 0.1.9. No newer consumer installers are
+published there. `UpdateChecker` (`update/`) queries the public releases API at
+most once a day, records the timestamp in
 `%APPDATA%\InputRack\update-check.json`, and offers an install button in the
 status strip. A second button there starts the check on demand.
 

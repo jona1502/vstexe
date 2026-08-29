@@ -2,12 +2,9 @@ name: Windows release
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-windows-installer:
@@ -21,13 +18,9 @@ jobs:
       - name: Select version
         shell: pwsh
         run: |
-          if ($env:GITHUB_REF_TYPE -eq 'tag') {
-            $version = $env:GITHUB_REF_NAME.TrimStart('v')
-          } else {
-            $version = "0.1.$env:GITHUB_RUN_NUMBER"
-          }
+          $version = "0.1.$env:GITHUB_RUN_NUMBER"
           if ($version -notmatch '^\d+\.\d+\.\d+$') {
-            throw "Release tags must use vMAJOR.MINOR.PATCH; received $env:GITHUB_REF_NAME"
+            throw "Generated build version is invalid: $version"
           }
           "INPUTRACK_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
 
@@ -88,27 +81,3 @@ jobs:
           name: InputRack-${{ env.INPUTRACK_VERSION }}-Windows-x64
           path: out/windows/*
           if-no-files-found: error
-
-      - name: Publish GitHub release
-        if: github.ref_type == 'tag'
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $files = Get-ChildItem .\out\windows -File | Select-Object -ExpandProperty FullName
-          gh release view $env:GITHUB_REF_NAME *> $null
-          if ($LASTEXITCODE -eq 0) {
-            gh release upload $env:GITHUB_REF_NAME $files --clobber
-          } else {
-            $notes = @"
-          Windows x64 desktop installer and SHA-256 checksum.
-
-          Publishing the processed chain needs a virtual audio cable such as VB-CABLE, installed
-          separately; see docs/VIRTUAL_CABLE.md for the routing. The bundled virtual microphone
-          kernel driver is not shipped until its release package has been signed by Microsoft.
-          "@
-            $notes | Set-Content .\out\windows\release-notes.md
-            gh release create $env:GITHUB_REF_NAME $files `
-              --verify-tag --title "InputRack $env:INPUTRACK_VERSION" `
-              --notes-file .\out\windows\release-notes.md --generate-notes
-          }
