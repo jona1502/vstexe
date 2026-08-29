@@ -1,6 +1,8 @@
 #include "MainComponent.h"
 #include <inputrack/IsolatedPluginScanner.h>
 
+#include <cmath>
+
 #if JUCE_WINDOWS
 #include <windows.h>
 #endif
@@ -26,6 +28,10 @@ constexpr juce::uint32 onAccent = 0xff08090c;
 
 constexpr float panelRadius = 14.0f;
 constexpr float controlRadius = 8.0f;
+
+// The status-strip readout is measured as well as drawn, so both use one font.
+constexpr float readoutFontHeight = 10.5f;
+constexpr int readoutPadding = 8;
 
 juce::File pluginDataDirectory()
 {
@@ -719,9 +725,10 @@ MainComponent::MainComponent()
         status.setText(juce::String(engine.knownPlugins().getNumTypes())
                            + " saved VST3 plug-ins loaded.",
                        juce::dontSendNotification);
-    const auto error = engine.initialiseAudio();
+    const auto error = engine.initialiseAudio({}, storedSampleRate);
     if (error.isNotEmpty()) status.setText("Audio: " + error, juce::dontSendNotification);
     else status.setText(routingStatus(), juce::dontSendNotification);
+    storedSampleRate = engine.sampleRate();
     refreshDeviceSelectors();
     const auto recovering = crashMarkerFile().existsAsFile();
     restoreActiveProfile = !recovering;
@@ -804,19 +811,103 @@ void MainComponent::paint(juce::Graphics& g)
     g.fillEllipse(static_cast<float>(statusTextArea.getX() - 16),
                   static_cast<float>(statusStrip.getCentreY()) - 3.0f, 6.0f, 6.0f);
 
-    auto device = engine.deviceManager().getCurrentAudioDevice();
-    const auto sampleRate = device != nullptr ? device->getCurrentSampleRate() : 0.0;
-    const auto bufferSize = device != nullptr ? device->getCurrentBufferSizeSamples() : 0;
     g.setColour(juce::Colour(running ? accent : textFaint));
     g.setFont(juce::FontOptions(9.5f, juce::Font::bold));
     g.drawText(running ? "RUNNING" : "STOPPED", statusStrip.getX() + 24,
                statusStrip.getY(), 64, statusStrip.getHeight(), juce::Justification::centredLeft);
+
+    // The readout opens the sample-rate menu, so it brightens and underlines
+    // under the pointer instead of looking like dead text.
+    const auto readoutArea = transportReadoutBounds();
+    g.setFont(juce::FontOptions(readoutFontHeight));
+    g.setColour(juce::Colour(transportReadoutHot ? accentBright : textMuted));
+    g.drawText(transportReadout(), readoutArea, juce::Justification::centredLeft);
+    if (transportReadoutHot)
+        g.fillRect(readoutArea.getX(), statusStrip.getCentreY() + 9,
+                   readoutArea.getWidth() - readoutPadding, 1);
     g.setColour(juce::Colour(textMuted));
-    g.setFont(juce::FontOptions(10.5f));
-    const auto technical = juce::String(sampleRate / 1000.0, 1) + " kHz   "
-        + juce::String(bufferSize) + " samples   VST3";
-    g.drawText(technical, statusStrip.getX() + 96, statusStrip.getY(), 190,
+    g.drawText("VST3", readoutArea.getRight() + 8, statusStrip.getY(), 60,
                statusStrip.getHeight(), juce::Justification::centredLeft);
+}
+
+juce::String MainComponent::transportReadout()
+{
+    auto* device = engine.deviceManager().getCurrentAudioDevice();
+    const auto rate = device != nullptr ? device->getCurrentSampleRate() : 0.0;
+    const auto bufferSize = device != nullptr ? device->getCurrentBufferSizeSamples() : 0;
+    return juce::String(rate / 1000.0, 1) + " kHz   " + juce::String(bufferSize) + " samples";
+}
+
+/*
+ * The readout is painted text rather than a control, so its bounds are measured
+ * from the string paint() draws. That keeps the click target on the digits the
+ * user is actually pointing at, whatever the current rate and buffer size make
+ * the text as wide as.
+ */
+juce::Rectangle<int> MainComponent::transportReadoutBounds()
+{
+    const juce::Font font{juce::FontOptions(readoutFontHeight)};
+    const auto width = juce::GlyphArrangement::getStringWidthInt(font, transportReadout());
+    return {statusStrip.getX() + 96, statusStrip.getY(), width + readoutPadding,
+            statusStrip.getHeight()};
+}
+
+void MainComponent::mouseDown(const juce::MouseEvent& event)
+{
+    if (transportReadoutBounds().contains(event.getPosition())) showSampleRateMenu();
+}
+
+void MainComponent::mouseMove(const juce::MouseEvent& event)
+{
+    const auto hot = transportReadoutBounds().contains(event.getPosition());
+    if (hot == transportReadoutHot) return;
+    transportReadoutHot = hot;
+    setMouseCursor(hot ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
+    repaint(statusStrip);
+}
+
+void MainComponent::mouseExit(const juce::MouseEvent&)
+{
+    if (!transportReadoutHot) return;
+    transportReadoutHot = false;
+    setMouseCursor(juce::MouseCursor::NormalCursor);
+    repaint(statusStrip);
+}
+
+void MainComponent::showSampleRateMenu()
+{
+    const auto rates = engine.availableSampleRates();
+    const auto current = engine.sampleRate();
+    juce::PopupMenu popup;
+    popup.addSectionHeader("Sample rate");
+    for (int i = 0; i < rates.size(); ++i)
+        popup.addItem(i + 1, juce::String(rates[i] / 1000.0, 1) + " kHz", true,
+                      std::abs(rates[i] - current) < 0.5);
+    const juce::Component::SafePointer<MainComponent> safeThis(this);
+    popup.showMenuAsync(
+        juce::PopupMenu::Options().withTargetScreenArea(
+            localAreaToGlobal(transportReadoutBounds())),
+        [safeThis, rates](int result) {
+            if (safeThis == nullptr || result < 1 || result > rates.size()) return;
+            safeThis->selectSampleRate(rates[result - 1]);
+        });
+}
+
+/*
+ * Reopening the device also restarts the driver feed, so both can fail
+ * independently: the device may refuse the rate outright, or accept it and
+ * leave the virtual microphone unable to come back. Neither may pass silently.
+ */
+void MainComponent::selectSampleRate(double rate)
+{
+    const auto error = engine.setSampleRate(rate);
+    if (error.isNotEmpty()) showError("Sample rate unavailable", error);
+    storedSampleRate = engine.sampleRate();
+    saveSettings();
+    refreshDeviceSelectors();
+    const auto driver = engine.virtualMicrophoneStatus();
+    status.setText(driver.isNotEmpty() ? driver : routingStatus(), juce::dontSendNotification);
+    repaint(statusStrip);
 }
 
 void MainComponent::resized()
@@ -1517,6 +1608,7 @@ void MainComponent::loadSettings()
     const auto stored = settings.getProperty("pluginSort", "name").toString();
     activeProfileName = settings.getProperty("activeProfile", {}).toString();
     setupAssistantSeen = static_cast<bool>(settings.getProperty("setupAssistantSeen", false));
+    storedSampleRate = static_cast<double>(settings.getProperty("sampleRate", 0.0));
     const auto id = stored == "manufacturer" ? 2 : stored == "category" ? 3 : 1;
     // A missing or damaged file must not keep the picker empty, so anything
     // unrecognised falls back to sorting by name.
@@ -1533,6 +1625,7 @@ void MainComponent::saveSettings() const
     settings->setProperty("pluginSort", name);
     settings->setProperty("activeProfile", activeProfileName);
     settings->setProperty("setupAssistantSeen", setupAssistantSeen);
+    settings->setProperty("sampleRate", storedSampleRate);
     settingsFile().replaceWithText(juce::JSON::toString(juce::var(settings.get())));
 }
 

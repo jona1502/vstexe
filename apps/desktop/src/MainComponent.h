@@ -36,6 +36,9 @@ public:
     ~MainComponent() override;
     void paint(juce::Graphics&) override;
     void resized() override;
+    void mouseDown(const juce::MouseEvent&) override;
+    void mouseMove(const juce::MouseEvent&) override;
+    void mouseExit(const juce::MouseEvent&) override;
 
 private:
     class PluginRowComponent;
@@ -76,6 +79,12 @@ private:
     void refreshDeviceSelectors();
     void selectInputDevice();
     void selectOutputDevice();
+    /** The "48.0 kHz   480 samples" text drawn in the status strip. */
+    juce::String transportReadout();
+    /** Where that text lands, which is also what the click has to hit. */
+    juce::Rectangle<int> transportReadoutBounds();
+    void showSampleRateMenu();
+    void selectSampleRate(double);
     void showPluginBrowser();
     void showPresetMenu();
     void showSaveProfileDialog();
@@ -124,6 +133,7 @@ private:
     std::unique_ptr<juce::AlertWindow> profileDialog;
     std::unique_ptr<juce::AlertWindow> setupDialog;
     std::unique_ptr<GlobalHotkeys> globalHotkeys;
+    double storedSampleRate{};
     int automaticProfilePollTicks{};
     int trialRefreshTicks{};
     bool setupAssistantSeen{};
@@ -140,6 +150,7 @@ private:
     float inputMeterDisplay[2]{};
     float outputMeterDisplay[2]{};
     int clipIndicatorTicksRemaining{};
+    bool transportReadoutHot{};
     bool refreshingDeviceSelectors{};
     PluginBrowserComponent* activePluginBrowser{};
     std::atomic<float> scanProgress{};

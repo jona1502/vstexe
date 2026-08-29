@@ -1,4 +1,4 @@
-add_library(inputrack_platform STATIC src/VirtualMicrophone.cpp)
+add_library(inputrack_platform STATIC src/SampleRateConverter.cpp src/VirtualMicrophone.cpp)
 if(WIN32)
     target_sources(inputrack_platform PRIVATE src/VirtualMicrophone_windows.cpp)
     target_link_libraries(inputrack_platform PRIVATE setupapi ksuser)

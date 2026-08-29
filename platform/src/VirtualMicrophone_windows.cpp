@@ -1,5 +1,6 @@
-#include <inputrack/VirtualMicrophone.h>
+#include <inputrack/SampleRateConverter.h>
 #include <inputrack/VirtualMicProtocol.h>
+#include <inputrack/VirtualMicrophone.h>
 
 #define NOMINMAX
 #include <Windows.h>
@@ -43,18 +44,30 @@ public:
 
     ~WindowsVirtualMicrophone() override { stop(); }
 
-    juce::String start(double sourceSampleRate, int channels, int) override
+    juce::String start(double sourceSampleRate, int channels, int maximumBlockSize) override
     {
         stop();
-        if (std::abs(sourceSampleRate - static_cast<double>(protocol::sampleRate)) > 0.5
-            || channels != protocol::channelCount)
-            return "Virtual microphone requires mono audio at 48 kHz";
+        if (channels != protocol::channelCount)
+            return "Virtual microphone requires mono audio";
+        if (sourceSampleRate <= 0.0)
+            return "Virtual microphone needs an open audio device";
+
+        /*
+         * The driver publishes one fixed rate to Windows, so a chain running at
+         * any other rate is converted here instead of being refused. Blocks can
+         * arrive larger than the device asked for, so the converter is sized
+         * with headroom rather than exactly.
+         */
+        converter.prepare(sourceSampleRate, static_cast<double>(protocol::sampleRate),
+                          std::max(2 * maximumBlockSize, 4096));
+        converted.assign(static_cast<std::size_t>(converter.maximumOutputFrames()), 0.0f);
 
         device = findCompatibleFilter();
         if (device == INVALID_HANDLE_VALUE)
             return "InputRack Virtual Mic driver was not found";
 
         fifo.reset();
+        converter.reset();
         sequence = 0;
         running.store(true, std::memory_order_release);
         startThread(juce::Thread::Priority::high);
@@ -78,13 +91,25 @@ public:
         if (!running.load(std::memory_order_acquire) || monoSamples == nullptr || sampleCount <= 0)
             return;
 
-        const auto toWrite = std::min(sampleCount, fifo.getFreeSpace());
+        const auto* samples = monoSamples;
+        auto frameCount = sampleCount;
+        if (!converter.isPassThrough()) {
+            frameCount = converter.convert(monoSamples, sampleCount, converted.data(),
+                                           static_cast<int>(converted.size()));
+            // A block can land entirely inside the converter's carry, which just
+            // means the frames it holds leave with the next one.
+            if (frameCount <= 0)
+                return;
+            samples = converted.data();
+        }
+
+        const auto toWrite = std::min(frameCount, fifo.getFreeSpace());
         const auto scope = fifo.write(toWrite);
         for (int i = 0; i < scope.blockSize1; ++i)
-            floatBuffer[static_cast<std::size_t>(scope.startIndex1 + i)] = monoSamples[i];
+            floatBuffer[static_cast<std::size_t>(scope.startIndex1 + i)] = samples[i];
         for (int i = 0; i < scope.blockSize2; ++i)
             floatBuffer[static_cast<std::size_t>(scope.startIndex2 + i)] =
-                monoSamples[scope.blockSize1 + i];
+                samples[scope.blockSize1 + i];
         if (toWrite > 0)
             signal.signal();
     }
@@ -203,6 +228,8 @@ private:
 
     HANDLE device{INVALID_HANDLE_VALUE};
     juce::AbstractFifo fifo;
+    SampleRateConverter converter;
+    std::vector<float> converted;
     std::vector<float> floatBuffer;
     std::vector<unsigned char> packet;
     juce::WaitableEvent signal;

@@ -6,6 +6,10 @@ add_executable(virtualmic_protocol_tests VirtualMicProtocolTests.cpp)
 target_link_libraries(virtualmic_protocol_tests PRIVATE inputrack_platform)
 add_test(NAME virtualmic_protocol_tests COMMAND virtualmic_protocol_tests)
 
+add_executable(sample_rate_converter_tests SampleRateConverterTests.cpp)
+target_link_libraries(sample_rate_converter_tests PRIVATE inputrack_platform)
+add_test(NAME sample_rate_converter_tests COMMAND sample_rate_converter_tests)
+
 add_executable(pcm_ring_buffer_tests PcmRingBufferTests.cpp)
 target_include_directories(pcm_ring_buffer_tests PRIVATE
     "${PROJECT_SOURCE_DIR}/driver/windows/inputrack")

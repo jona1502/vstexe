@@ -38,6 +38,17 @@ int main()
     expect(Engine::pairedCaptureName("MONITOR L/R (Volt 1)").isEmpty(),
            "an unknown device yields no capture name instead of a guess");
 
+    // The rate picker in the status strip is filled from what the device
+    // advertises, and drivers advertise everything down to telephony rates. A
+    // rate that slipped through would be offered as a rack setting.
+    expect(Engine::isUsableSampleRate(Engine::defaultSampleRate),
+           "the default rate is offered");
+    expect(Engine::isUsableSampleRate(44100.0), "CD rate is offered");
+    expect(Engine::isUsableSampleRate(192000.0), "the top supported rate is offered");
+    expect(!Engine::isUsableSampleRate(8000.0), "a telephony rate is not offered");
+    expect(!Engine::isUsableSampleRate(384000.0), "a rate beyond the range is not offered");
+    expect(!Engine::isUsableSampleRate(0.0), "a closed device reports no usable rate");
+
     if (failures == 0) std::cout << "OutputRoutingTests passed\n";
     return failures == 0 ? 0 : 1;
 }

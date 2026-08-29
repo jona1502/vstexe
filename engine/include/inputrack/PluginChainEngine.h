@@ -8,7 +8,7 @@
 namespace inputrack {
 class PluginChainEngine final {
 public:
-    static constexpr double sampleRate = 48000.0;
+    static constexpr double defaultSampleRate = 48000.0;
     static constexpr int inputChannelCount = 1;
     static constexpr int outputChannelCount = 2;
     static constexpr int processingChannelCount = 2;
@@ -17,8 +17,17 @@ public:
     juce::AudioDeviceManager& deviceManager() noexcept;
     juce::AudioPluginFormatManager& formatManager() noexcept;
     juce::KnownPluginList& knownPlugins() noexcept;
-    juce::String initialiseAudio(const juce::String& preferredInput = {});
+    juce::String initialiseAudio(const juce::String& preferredInput = {},
+                                 double preferredSampleRate = 0.0);
     void shutdownAudio();
+    /** The rate the open device is running the rack at. */
+    double sampleRate() const noexcept;
+    /** Rates the open device offers that are sensible for a voice chain. */
+    juce::Array<double> availableSampleRates() const;
+    /** Reopens the device at the given rate; returns an error when it refuses. */
+    juce::String setSampleRate(double);
+    /** True for a rate the picker is willing to offer. */
+    static bool isUsableSampleRate(double) noexcept;
     bool addPlugin(const juce::PluginDescription&, juce::String& error);
     void removePlugin(int);
     void movePlugin(int from, int to);
@@ -63,6 +72,7 @@ private:
                                                    juce::String& error);
     void removeHostedPlugin(const HostedPlugin&);
     bool rebuildConnections();
+    double activeSampleRate{defaultSampleRate};
     juce::AudioDeviceManager devices;
     juce::AudioProcessorPlayer player;
     juce::AudioPluginFormatManager formats;

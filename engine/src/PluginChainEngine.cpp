@@ -1,6 +1,8 @@
 #include <inputrack/ChannelAdapterProcessor.h>
 #include <inputrack/PluginChainEngine.h>
 
+#include <cmath>
+
 namespace inputrack {
 namespace {
 struct PluginLayout {
@@ -10,7 +12,7 @@ struct PluginLayout {
     explicit operator bool() const noexcept { return inputs > 0 && outputs > 0; }
 };
 
-PluginLayout configurePluginLayout(juce::AudioPluginInstance& plugin)
+PluginLayout configurePluginLayout(juce::AudioPluginInstance& plugin, double sampleRate)
 {
     if (plugin.getBusCount(true) == 0 || plugin.getBusCount(false) == 0)
         return {};
@@ -25,7 +27,7 @@ PluginLayout configurePluginLayout(juce::AudioPluginInstance& plugin)
         layout.getChannelSet(false, 0) = candidate.outputs == 2
             ? juce::AudioChannelSet::stereo() : juce::AudioChannelSet::mono();
         if (plugin.setBusesLayout(layout)) {
-            plugin.setRateAndBufferSizeDetails(PluginChainEngine::sampleRate, 256);
+            plugin.setRateAndBufferSizeDetails(sampleRate, 256);
             return candidate;
         }
     }
@@ -80,7 +82,7 @@ PluginChainEngine::PluginChainEngine()
     // Give the graph its fixed rack layout before any nodes are connected.
     // AudioProcessorPlayer will apply the real device block size later, while
     // this also keeps graph edits valid before a device has been opened.
-    graph->setPlayConfigDetails(inputChannelCount, outputChannelCount, sampleRate, 256);
+    graph->setPlayConfigDetails(inputChannelCount, outputChannelCount, activeSampleRate, 256);
     inputNode = graph->addNode(std::make_unique<juce::AudioProcessorGraph::AudioGraphIOProcessor>(
         juce::AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode));
     inputUpmixNode = graph->addNode(
@@ -103,20 +105,34 @@ juce::AudioDeviceManager& PluginChainEngine::deviceManager() noexcept { return d
 juce::AudioPluginFormatManager& PluginChainEngine::formatManager() noexcept { return formats; }
 juce::KnownPluginList& PluginChainEngine::knownPlugins() noexcept { return plugins; }
 
-juce::String PluginChainEngine::initialiseAudio(const juce::String& preferredInput)
+juce::String PluginChainEngine::initialiseAudio(const juce::String& preferredInput,
+                                                double preferredSampleRate)
 {
     auto error = devices.initialise(inputChannelCount, outputChannelCount, nullptr, true, preferredInput);
     if (error.isNotEmpty()) return error;
     juce::AudioDeviceManager::AudioDeviceSetup setup;
     devices.getAudioDeviceSetup(setup);
-    setup.sampleRate = sampleRate;
+    const auto requested = isUsableSampleRate(preferredSampleRate) ? preferredSampleRate
+                                                                   : defaultSampleRate;
+    setup.sampleRate = requested;
     setup.inputChannels.clear(); setup.inputChannels.setBit(0);
     setup.outputChannels.clear();
     setup.outputChannels.setRange(0, outputChannelCount, true);
-    if (error = devices.setAudioDeviceSetup(setup, true); error.isNotEmpty()) return error;
+    error = devices.setAudioDeviceSetup(setup, true);
+    if (error.isNotEmpty() && requested != defaultSampleRate) {
+        // A rate remembered from a device that is no longer plugged in must not
+        // leave the app silent, so the default is tried before giving up.
+        setup.sampleRate = defaultSampleRate;
+        error = devices.setAudioDeviceSetup(setup, true);
+    }
+    if (error.isNotEmpty()) return error;
     auto* audioDevice = devices.getCurrentAudioDevice();
+    // The device has the last word on the rate; everything downstream follows it
+    // rather than what was asked for.
+    activeSampleRate = audioDevice != nullptr ? audioDevice->getCurrentSampleRate()
+                                              : setup.sampleRate;
     virtualMicStatus = virtualMicrophone->start(
-        sampleRate, inputChannelCount,
+        activeSampleRate, inputChannelCount,
         audioDevice != nullptr ? audioDevice->getCurrentBufferSizeSamples() : 256);
     player.setProcessor(graph.get());
     devices.addAudioCallback(&player);
@@ -128,6 +144,64 @@ juce::String PluginChainEngine::initialiseAudio(const juce::String& preferredInp
         return "The mono input could not be connected to the stereo processing graph.";
     }
     return {};
+}
+
+double PluginChainEngine::sampleRate() const noexcept { return activeSampleRate; }
+
+/*
+ * Devices advertise everything their driver can be talked into, down to
+ * telephony rates a voice chain has no use for and up to rates that only cost
+ * CPU here. The picker offers the range in between so a stray entry cannot make
+ * the rack unusable.
+ */
+bool PluginChainEngine::isUsableSampleRate(double rate) noexcept
+{
+    return rate >= 44100.0 - 0.5 && rate <= 192000.0 + 0.5;
+}
+
+juce::Array<double> PluginChainEngine::availableSampleRates() const
+{
+    juce::Array<double> rates;
+    if (auto* device = devices.getCurrentAudioDevice())
+        for (const auto rate : device->getAvailableSampleRates())
+            if (isUsableSampleRate(rate)) rates.addIfNotAlreadyThere(rate);
+    if (rates.isEmpty()) rates.add(activeSampleRate);
+    rates.sort();
+    return rates;
+}
+
+/*
+ * Changing the rate closes and reopens the device, which pulls the buffer the
+ * driver feed is written from out from under it. The feed is therefore stopped
+ * first and started again on the rate the device actually settled on, and a
+ * refusal puts the previous rate back rather than leaving the rack closed.
+ */
+juce::String PluginChainEngine::setSampleRate(double rate)
+{
+    if (!isUsableSampleRate(rate))
+        return "InputRack runs between 44.1 kHz and 192 kHz.";
+    if (devices.getCurrentAudioDevice() == nullptr)
+        return "No audio device is open.";
+    if (std::abs(activeSampleRate - rate) < 0.5) return {};
+
+    juce::AudioDeviceManager::AudioDeviceSetup setup;
+    devices.getAudioDeviceSetup(setup);
+    const auto previous = setup.sampleRate;
+    setup.sampleRate = rate;
+
+    virtualMicrophone->stop();
+    auto error = devices.setAudioDeviceSetup(setup, true);
+    if (error.isNotEmpty()) {
+        setup.sampleRate = previous;
+        devices.setAudioDeviceSetup(setup, true);
+    }
+
+    auto* audioDevice = devices.getCurrentAudioDevice();
+    activeSampleRate = audioDevice != nullptr ? audioDevice->getCurrentSampleRate() : previous;
+    virtualMicStatus = virtualMicrophone->start(
+        activeSampleRate, inputChannelCount,
+        audioDevice != nullptr ? audioDevice->getCurrentBufferSizeSamples() : 256);
+    return error;
 }
 
 void PluginChainEngine::shutdownAudio()
@@ -156,9 +230,9 @@ bool PluginChainEngine::addPlugin(const juce::PluginDescription& description, ju
 std::optional<PluginChainEngine::HostedPlugin> PluginChainEngine::createHostedPlugin(
     const juce::PluginDescription& description, juce::String& error)
 {
-    auto instance = formats.createPluginInstance(description, sampleRate, 256, error);
+    auto instance = formats.createPluginInstance(description, activeSampleRate, 256, error);
     if (!instance) return std::nullopt;
-    const auto layout = configurePluginLayout(*instance);
+    const auto layout = configurePluginLayout(*instance, activeSampleRate);
     if (!layout) {
         error = "The plug-in supports neither mono nor stereo audio processing.";
         return std::nullopt;
