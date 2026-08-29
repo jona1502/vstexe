@@ -1054,14 +1054,13 @@ void MainComponent::showPluginBrowser()
 
 void MainComponent::showPresetMenu()
 {
-    if (!entitlement->state().hasProAccess()) {
-        showProMenu();
-        return;
-    }
     juce::PopupMenu popup;
-    popup.addItem(10, "Save current rack as profile...");
+    const auto hasProAccess = entitlement->state().hasProAccess();
+    popup.addItem(10, hasProAccess ? "Save current rack as profile..."
+                                  : "Save current rack as profile... (Pro)",
+                  hasProAccess);
     const auto& stored = profiles.all();
-    if (!stored.isEmpty()) {
+    if (hasProAccess && !stored.isEmpty()) {
         popup.addSeparator();
         for (int i = 0; i < stored.size(); ++i) {
             const auto suffix = stored.getReference(i).name == activeProfileName ? "  (active)" : "";
