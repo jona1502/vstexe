@@ -30,12 +30,12 @@ export const pricing = [
   {
     name: 'Free', price: '€0', billing: 'forever', featured: false,
     detail: 'Build and route a complete microphone effect chain without an InputRack account.',
-    features: ['VST3 hosting and scanning', 'Rack preset import/export', 'Meters and routing assistant'],
+    features: ['VST3 hosting and scanning', 'Rack preset import/export', 'Meters and routing assistant', 'Start with Windows'],
   },
   {
     name: 'Pro', price: '€29.99', billing: 'one time', featured: true,
     detail: 'Try every Pro workflow free for 14 days. No subscription; all 1.x updates included.',
-    features: ['Named profiles', 'Automatic app profiles', 'Global hotkeys', 'Start with Windows'],
+    features: ['Named profiles', 'Automatic app profiles', 'Global hotkeys'],
   },
 ] as const;
 

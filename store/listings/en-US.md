@@ -21,10 +21,11 @@ Included for free:
 - Rack preset import and export
 - Input/output meters and clipping indication
 - Guided virtual-cable setup
+- Start with Windows through Windows settings
 
 InputRack Pro is a one-time in-app purchase that adds named profiles, automatic
-profiles per application, global hotkeys and start with Windows. Try all Pro
-features free for 14 days first. No subscription.
+profiles per application and global hotkeys. Try all Pro features free for 14
+days first. No subscription.
 
 Use in other applications requires a separately installed virtual audio cable
 such as VB-CABLE. InputRack does not include an audio driver or VST3 effects.

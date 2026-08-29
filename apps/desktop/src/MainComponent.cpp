@@ -1379,7 +1379,7 @@ void MainComponent::showApplicationMenu()
                       + (blocked.size() == 1 ? "" : "s"),
                   !blocked.isEmpty());
     const auto hasProAccess = entitlement->state().hasProAccess();
-    popup.addItem(5, "Windows startup settings...", hasProAccess);
+    popup.addItem(5, "Windows startup settings...");
     popup.addItem(6, hasProAccess
                          ? "Hotkeys: Ctrl+Alt+B, Ctrl+Alt+1..9"
                          : "Hotkeys: Ctrl+Alt+B, Ctrl+Alt+1..9 (Pro)",

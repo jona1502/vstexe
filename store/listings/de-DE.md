@@ -21,10 +21,11 @@ Kostenlos enthalten:
 - Import und Export von Rack-Presets
 - Ein-/Ausgangspegel und Clipping-Anzeige
 - Geführte Einrichtung für virtuelle Audiokabel
+- Autostart über die Windows-Einstellungen
 
 InputRack Pro ist ein einmaliger In-App-Kauf für 29,99 € und ergänzt benannte
-Profile, automatische Profile pro Anwendung, globale Hotkeys und Autostart.
-Alle Pro-Funktionen können vorher 14 Tage kostenlos getestet werden. Kein Abo.
+Profile, automatische Profile pro Anwendung und globale Hotkeys. Alle
+Pro-Funktionen können vorher 14 Tage kostenlos getestet werden. Kein Abo.
 
 Für die Nutzung in anderen Programmen wird ein separat installiertes virtuelles
 Audiokabel wie VB-CABLE benötigt. InputRack enthält keinen Audiotreiber und

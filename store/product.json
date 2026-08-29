@@ -19,8 +19,7 @@
     "features": [
       "Named workflow profiles",
       "Automatic profiles per application",
-      "Global bypass and profile hotkeys",
-      "Start with Windows"
+      "Global bypass and profile hotkeys"
     ]
   },
   "trial": {

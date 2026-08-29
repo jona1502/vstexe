@@ -11,8 +11,8 @@ under `HKCU\Software\InputRack`; it never asks for payment information. The
 permanent license continues to come exclusively from the Microsoft Store.
 
 Pro unlocks named profiles, automatic per-application profile switching,
-global bypass/profile hotkeys, and the Windows startup shortcut. Audio
-processing, plug-in hosting, monitoring, and manual routing remain available
+and global bypass/profile hotkeys. Audio processing, plug-in hosting,
+monitoring, manual routing, and the Windows startup shortcut remain available
 without a purchase.
 
 The **Get Pro** menu starts the Store purchase UI. **Restore purchases** queries
