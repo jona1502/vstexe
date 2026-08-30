@@ -6,6 +6,18 @@
 #include <optional>
 
 namespace inputrack {
+struct RoutingReadiness {
+    bool inputSelected{};
+    bool cableOutputSelected{};
+    bool outputEnabled{};
+    bool signalSeen{};
+
+    bool ready() const noexcept
+    {
+        return inputSelected && cableOutputSelected && outputEnabled && signalSeen;
+    }
+};
+
 class PluginChainEngine final {
 public:
     static constexpr double defaultSampleRate = 48000.0;
@@ -51,6 +63,10 @@ public:
     static juce::String pairedCaptureName(const juce::String& outputDeviceName);
     /** True when the name matches a known virtual audio cable. */
     static bool looksLikeVirtualCable(const juce::String& deviceName);
+    static RoutingReadiness evaluateRouting(const juce::String& inputDeviceName,
+                                            const juce::String& outputDeviceName,
+                                            bool outputEnabled,
+                                            bool signalSeen);
     juce::AudioPluginInstance* pluginAt(int) const;
     bool isPluginMissing(int) const noexcept;
     int pluginInputChannelCountAt(int) const;

@@ -1434,7 +1434,7 @@ void MainComponent::showSetupAssistant()
         "Connect InputRack to your apps",
         "1. Select your physical microphone under INPUT.\n"
         "2. Select CABLE Input (VB-Audio Virtual Cable) under OUTPUT.\n"
-        "3. Turn Monitor on.\n"
+        "3. Turn Monitor on to send the output into the cable.\n"
         "4. Speak into the microphone, then run the routing test.\n\n"
         "In Discord or OBS, choose CABLE Output as the microphone.",
         juce::MessageBoxIconType::NoIcon);
@@ -1457,20 +1457,23 @@ void MainComponent::runRoutingTest()
 {
     juce::AudioDeviceManager::AudioDeviceSetup setup;
     engine.deviceManager().getAudioDeviceSetup(setup);
-    const auto hasInput = setup.inputDeviceName.isNotEmpty();
-    const auto hasCable = inputrack::PluginChainEngine::looksLikeVirtualCable(
-        setup.outputDeviceName);
-    const auto monitoring = engine.isMonitoringEnabled();
-    const auto passed = hasInput && hasCable && monitoring && routingSignalSeen;
+    const auto routing = inputrack::PluginChainEngine::evaluateRouting(
+        setup.inputDeviceName, setup.outputDeviceName,
+        engine.isMonitoringEnabled(), routingSignalSeen);
 
     juce::StringArray checks;
-    checks.add(juce::String(hasInput ? "OK   " : "FIX  ") + "Microphone selected");
-    checks.add(juce::String(hasCable ? "OK   " : "FIX  ") + "Virtual cable selected as output");
-    checks.add(juce::String(monitoring ? "OK   " : "FIX  ") + "Monitor is on");
-    checks.add(juce::String(routingSignalSeen ? "OK   " : "FIX  ")
+    checks.add(juce::String(routing.inputSelected ? "OK   " : "FIX  ")
+               + "Microphone: "
+               + (routing.inputSelected ? setup.inputDeviceName : "none selected"));
+    checks.add(juce::String(routing.cableOutputSelected ? "OK   " : "FIX  ")
+               + "Cable output: "
+               + (setup.outputDeviceName.isNotEmpty() ? setup.outputDeviceName : "none selected"));
+    checks.add(juce::String(routing.outputEnabled ? "OK   " : "FIX  ")
+               + "Output to cable is on");
+    checks.add(juce::String(routing.signalSeen ? "OK   " : "FIX  ")
                + "Processed signal reached the output");
     auto message = checks.joinIntoString("\n");
-    if (passed) {
+    if (routing.ready()) {
         const auto capture = inputrack::PluginChainEngine::pairedCaptureName(
             setup.outputDeviceName);
         message += "\n\nRouting is ready. Select "
@@ -1483,9 +1486,9 @@ void MainComponent::runRoutingTest()
     }
     juce::AlertWindow::showAsync(
         juce::MessageBoxOptions()
-            .withIconType(passed ? juce::MessageBoxIconType::InfoIcon
-                                 : juce::MessageBoxIconType::WarningIcon)
-            .withTitle(passed ? "Routing test passed" : "Routing test incomplete")
+            .withIconType(routing.ready() ? juce::MessageBoxIconType::InfoIcon
+                                          : juce::MessageBoxIconType::WarningIcon)
+            .withTitle(routing.ready() ? "Routing test passed" : "Routing test incomplete")
             .withMessage(message)
             .withButton("OK")
             .withAssociatedComponent(this),

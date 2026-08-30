@@ -26,6 +26,21 @@ int main()
     expect(!Engine::looksLikeVirtualCable(""),
            "an empty device name is not a cable");
 
+    const auto ready = Engine::evaluateRouting(
+        "USB Microphone", "CABLE Input (VB-Audio Virtual Cable)", true, true);
+    expect(ready.ready(), "a selected microphone, enabled cable and signal are ready");
+    expect(!Engine::evaluateRouting(
+               {}, "CABLE Input (VB-Audio Virtual Cable)", true, true).ready(),
+           "routing without a microphone is incomplete");
+    expect(!Engine::evaluateRouting("USB Microphone", "Speakers", true, true).ready(),
+           "a physical output is not accepted as the publishing cable");
+    expect(!Engine::evaluateRouting(
+               "USB Microphone", "CABLE Input (VB-Audio Virtual Cable)", false, true).ready(),
+           "a cable receives nothing while output is disabled");
+    expect(!Engine::evaluateRouting(
+               "USB Microphone", "CABLE Input (VB-Audio Virtual Cable)", true, false).ready(),
+           "routing is incomplete until processed signal has been observed");
+
     // The capture name is shown verbatim as the device to select elsewhere, so
     // a wrong guess would send the user looking for something that lists no
     // such device.

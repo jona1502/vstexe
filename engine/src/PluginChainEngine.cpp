@@ -426,6 +426,15 @@ bool PluginChainEngine::looksLikeVirtualCable(const juce::String& deviceName)
     return false;
 }
 
+RoutingReadiness PluginChainEngine::evaluateRouting(const juce::String& inputDeviceName,
+                                                     const juce::String& outputDeviceName,
+                                                     bool outputEnabled,
+                                                     bool signalSeen)
+{
+    return {inputDeviceName.isNotEmpty(), looksLikeVirtualCable(outputDeviceName),
+            outputEnabled, signalSeen};
+}
+
 juce::AudioPluginInstance* PluginChainEngine::pluginAt(int index) const
 {
     if (!juce::isPositiveAndBelow(index, chain.size())) return nullptr;
