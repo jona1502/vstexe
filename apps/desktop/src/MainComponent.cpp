@@ -277,9 +277,9 @@ public:
         window = CreateWindowExW(0, windowClass.lpszClassName, L"", 0, 0, 0, 0, 0,
                                  HWND_MESSAGE, nullptr, windowClass.hInstance, this);
         if (window == nullptr) return;
-        RegisterHotKey(window, 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, 'B');
+        registerHotkey(1, 'B', "Ctrl+Alt+B");
         for (int i = 0; i < 9; ++i)
-            RegisterHotKey(window, 100 + i, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, '1' + i);
+            registerHotkey(100 + i, '1' + i, "Ctrl+Alt+" + juce::String(i + 1));
 #endif
     }
 
@@ -287,10 +287,21 @@ public:
     {
 #if JUCE_WINDOWS
         if (window == nullptr) return;
-        UnregisterHotKey(window, 1);
-        for (int i = 0; i < 9; ++i) UnregisterHotKey(window, 100 + i);
+        for (const auto id : registeredIds) UnregisterHotKey(window, id);
         DestroyWindow(window);
 #endif
+    }
+
+    juce::String failureMessage() const
+    {
+#if JUCE_WINDOWS
+        if (window == nullptr)
+            return "Global hotkeys are unavailable because their Windows message window could not be created.";
+        if (!failedCombinations.isEmpty())
+            return "These global hotkeys are already in use: "
+                + failedCombinations.joinIntoString(", ") + ".";
+#endif
+        return {};
     }
 
 private:
@@ -311,7 +322,18 @@ private:
         }
         return DefWindowProcW(handle, message, wParam, lParam);
     }
+
+    void registerHotkey(int id, unsigned int key, const juce::String& label)
+    {
+        if (RegisterHotKey(window, id, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, key) != FALSE)
+            registeredIds.add(id);
+        else
+            failedCombinations.add(label);
+    }
+
     HWND window{};
+    juce::Array<int> registeredIds;
+    juce::StringArray failedCombinations;
 #endif
     std::function<void()> bypass;
     std::function<void(int)> selectProfile;
@@ -1421,6 +1443,7 @@ void MainComponent::startProTrial()
 
 void MainComponent::updateEntitlementUi(const inputrack::EntitlementResult& result)
 {
+    juce::String hotkeyWarning;
     proButton.setEnabled(true);
     proButton.setButtonText(result.permanent ? "Pro  ✓"
         : result.trial ? "Trial " + juce::String(result.trialDaysRemaining) + "d"
@@ -1432,6 +1455,7 @@ void MainComponent::updateEntitlementUi(const inputrack::EntitlementResult& resu
         globalHotkeys = std::make_unique<GlobalHotkeys>(
             [this] { toggleGlobalBypass(); },
             [this](int index) { activateProfileAtIndex(index); });
+        hotkeyWarning = globalHotkeys->failureMessage();
         if (restoreActiveProfile && activeProfileName.isNotEmpty()) {
             if (const auto profile = profiles.find(activeProfileName); profile.has_value())
                 activateProfile(*profile);
@@ -1439,7 +1463,12 @@ void MainComponent::updateEntitlementUi(const inputrack::EntitlementResult& resu
     } else if (!hasHotkeyAccess) {
         globalHotkeys.reset();
     }
-    if (result.message.isNotEmpty()) status.setText(result.message, juce::dontSendNotification);
+    const auto entitlementMessage = result.message.trim();
+    const auto combinedMessage = entitlementMessage.isNotEmpty() && hotkeyWarning.isNotEmpty()
+        ? entitlementMessage + " " + hotkeyWarning
+        : entitlementMessage.isNotEmpty() ? entitlementMessage : hotkeyWarning;
+    if (combinedMessage.isNotEmpty())
+        status.setText(combinedMessage, juce::dontSendNotification);
     repaint();
 }
 
@@ -1457,9 +1486,13 @@ void MainComponent::showApplicationMenu()
     const auto hasProAccess = inputrack::hasFeatureAccess(
         inputrack::ProductFeature::globalHotkeys, entitlement->state());
     popup.addItem(5, "Windows startup settings...");
-    popup.addItem(6, hasProAccess
-                         ? "Hotkeys: Ctrl+Alt+B, Ctrl+Alt+1..9"
-                         : "Hotkeys: Ctrl+Alt+B, Ctrl+Alt+1..9 (Pro)",
+    const auto hotkeyFailure = globalHotkeys != nullptr
+        ? globalHotkeys->failureMessage() : juce::String{};
+    popup.addItem(6, !hasProAccess
+                         ? "Hotkeys: Ctrl+Alt+B, Ctrl+Alt+1..9 (Pro)"
+                         : hotkeyFailure.isEmpty()
+                             ? "Hotkeys active: Ctrl+Alt+B, Ctrl+Alt+1..9"
+                             : "Some global hotkeys are unavailable",
                   false);
 #if !INPUTRACK_STORE_BUILD
     popup.addSeparator();
