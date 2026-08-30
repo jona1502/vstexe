@@ -39,6 +39,8 @@ int main()
     const auto service = inputrack::EntitlementService::create();
     if (!service->state().hasProAccess() || service->state().trial
         || service->state().trialAvailable || service->isBusy()) return 1;
+    const auto localState = service->refreshLocalState();
+    if (!localState.hasProAccess() || localState.trial || localState.trialAvailable) return 11;
     auto called = false;
     service->refresh(nullptr, [&called](inputrack::EntitlementResult result) {
         called = result.permanent && result.hasProAccess() && result.message.isEmpty();

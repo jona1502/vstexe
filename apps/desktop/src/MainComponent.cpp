@@ -1029,9 +1029,9 @@ void MainComponent::timerCallback()
         pollAutomaticProfile();
     }
     if (entitlement->state().trial) {
-        if (++trialRefreshTicks >= 20 * 60 * 60) {
+        if (++trialRefreshTicks >= 20 * 60) {
             trialRefreshTicks = 0;
-            refreshEntitlement(false);
+            updateEntitlementUi(entitlement->refreshLocalState());
         }
     } else {
         trialRefreshTicks = 0;

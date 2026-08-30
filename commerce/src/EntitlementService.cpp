@@ -46,6 +46,7 @@ bool beginLocalTrial()
 class DevelopmentEntitlement final : public EntitlementService {
 public:
     EntitlementResult state() const noexcept override { return {true, false, false, 0, {}}; }
+    EntitlementResult refreshLocalState() noexcept override { return state(); }
     bool isBusy() const noexcept override { return false; }
     void refresh(void*, Callback callback) override { callback(state()); }
     void purchase(void*, Callback callback) override
@@ -79,6 +80,21 @@ public:
     EntitlementResult state() const noexcept override
     {
         return {permanent.load(), trial.load(), trialAvailable.load(), trialDays.load(), {}};
+    }
+    EntitlementResult refreshLocalState() noexcept override
+    {
+        if (developmentOverride) return state();
+        auto refreshed = localTrialState();
+        refreshed.permanent = permanent.load();
+        if (refreshed.permanent) {
+            refreshed.trial = false;
+            refreshed.trialAvailable = false;
+            refreshed.trialDaysRemaining = 0;
+        }
+        trial.store(refreshed.trial);
+        trialAvailable.store(refreshed.trialAvailable);
+        trialDays.store(refreshed.trialDaysRemaining);
+        return refreshed;
     }
     bool isBusy() const noexcept override { return isThreadRunning(); }
 
