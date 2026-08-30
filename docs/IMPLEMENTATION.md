@@ -37,8 +37,6 @@ Discord, OBS, Teams and Chromium receive processed audio after reboot.
 
 Still open before M4 is complete:
 
-- missing-plug-in placeholders in presets (a preset with an unavailable
-  plug-in is currently rejected outright rather than loaded with a gap)
 - signed release pipeline
 
 ## Known build limitation

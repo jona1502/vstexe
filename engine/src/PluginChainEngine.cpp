@@ -72,6 +72,52 @@ public:
 private:
     VirtualMicrophone& microphone;
 };
+
+/** A stereo pass-through that preserves an unavailable plug-in's identity and state. */
+class MissingPluginProcessor final : public juce::AudioPluginInstance {
+public:
+    explicit MissingPluginProcessor(juce::PluginDescription descriptionToKeep)
+        : AudioPluginInstance(BusesProperties()
+              .withInput("Input", juce::AudioChannelSet::stereo(), true)
+              .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+          description(std::move(descriptionToKeep))
+    {
+    }
+
+    void fillInPluginDescription(juce::PluginDescription& value) const override
+    {
+        value = description;
+    }
+    const juce::String getName() const override { return description.name + " (missing)"; }
+    void prepareToPlay(double, int) override {}
+    void releaseResources() override {}
+    bool isBusesLayoutSupported(const BusesLayout& layouts) const override
+    {
+        return layouts.getMainInputChannelSet() == juce::AudioChannelSet::stereo()
+            && layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
+    }
+    void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override {}
+    juce::AudioProcessorEditor* createEditor() override { return nullptr; }
+    bool hasEditor() const override { return false; }
+    bool acceptsMidi() const override { return false; }
+    bool producesMidi() const override { return false; }
+    bool isMidiEffect() const override { return false; }
+    double getTailLengthSeconds() const override { return 0.0; }
+    int getNumPrograms() override { return 1; }
+    int getCurrentProgram() override { return 0; }
+    void setCurrentProgram(int) override {}
+    const juce::String getProgramName(int) override { return {}; }
+    void changeProgramName(int, const juce::String&) override {}
+    void getStateInformation(juce::MemoryBlock& data) override { data = savedState; }
+    void setStateInformation(const void* data, int size) override
+    {
+        savedState = juce::MemoryBlock(data, static_cast<std::size_t>(size));
+    }
+
+private:
+    juce::PluginDescription description;
+    juce::MemoryBlock savedState;
+};
 } // namespace
 
 PluginChainEngine::PluginChainEngine()
@@ -259,9 +305,19 @@ std::optional<PluginChainEngine::HostedPlugin> PluginChainEngine::createHostedPl
             return std::nullopt;
         }
         return HostedPlugin{description, node, inputAdapter, outputAdapter,
-                            layout.inputs, layout.outputs, false};
+                            layout.inputs, layout.outputs, false, false};
     }
     error = "The plug-in could not be added to the audio graph.";
+    return std::nullopt;
+}
+
+std::optional<PluginChainEngine::HostedPlugin> PluginChainEngine::createMissingPlugin(
+    const juce::PluginDescription& description)
+{
+    auto processor = std::make_unique<MissingPluginProcessor>(description);
+    processor->setRateAndBufferSizeDetails(activeSampleRate, 256);
+    if (auto node = graph->addNode(std::move(processor)))
+        return HostedPlugin{description, node, nullptr, nullptr, 2, 2, true, false};
     return std::nullopt;
 }
 
@@ -376,6 +432,12 @@ juce::AudioPluginInstance* PluginChainEngine::pluginAt(int index) const
     return dynamic_cast<juce::AudioPluginInstance*>(chain.getReference(index).node->getProcessor());
 }
 
+bool PluginChainEngine::isPluginMissing(int index) const noexcept
+{
+    return juce::isPositiveAndBelow(index, chain.size())
+        && chain.getReference(index).missing;
+}
+
 int PluginChainEngine::pluginInputChannelCountAt(int index) const
 {
     return juce::isPositiveAndBelow(index, chain.size())
@@ -404,8 +466,10 @@ ChainState PluginChainEngine::captureState() const
 
 bool PluginChainEngine::restoreState(const ChainState& state, juce::String& error)
 {
+    error.clear();
     juce::Array<HostedPlugin> candidate;
     juce::StringArray failures;
+    juce::StringArray missing;
     for (int i = 0; i < state.size(); ++i) {
         const auto item = state.pluginAt(i);
         juce::PluginDescription description;
@@ -418,9 +482,12 @@ bool PluginChainEngine::restoreState(const ChainState& state, juce::String& erro
         juce::String pluginError;
         auto hosted = createHostedPlugin(description, pluginError);
         if (!hosted.has_value()) {
-            failures.add(description.name + ": "
-                         + (pluginError.isNotEmpty() ? pluginError : "could not be loaded"));
-            continue;
+            missing.add(description.name);
+            hosted = createMissingPlugin(description);
+            if (!hosted.has_value()) {
+                failures.add(description.name + ": a missing plug-in placeholder could not be created");
+                continue;
+            }
         }
         const auto data = state.pluginState(i);
         if (!data.isEmpty())
@@ -451,6 +518,9 @@ bool PluginChainEngine::restoreState(const ChainState& state, juce::String& erro
     }
 
     for (const auto& item : previous) removeHostedPlugin(item);
+    if (!missing.isEmpty())
+        error = "Audio will pass through the unavailable plug-in(s):\n- "
+            + missing.joinIntoString("\n- ");
     return true;
 }
 

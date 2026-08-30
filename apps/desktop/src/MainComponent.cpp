@@ -555,6 +555,7 @@ public:
 
         auto* plugin = owner.engine.pluginAt(row);
         if (plugin == nullptr) return;
+        const auto missing = owner.engine.isPluginMissing(row);
         g.setColour(juce::Colour(textFaint));
         g.setFont(juce::FontOptions(11.0f));
         g.drawText(juce::String(row + 1), 13, 0, 22, getHeight(), juce::Justification::centred);
@@ -564,9 +565,12 @@ public:
         g.setFont(juce::FontOptions(13.0f, juce::Font::bold));
         g.drawFittedText(plugin->getName(), 88, 12, nameWidth, 18,
                          juce::Justification::centredLeft, 1);
-        drawCaption(g, "VST3  " + juce::String(owner.engine.pluginInputChannelCountAt(row))
-                           + " -> " + juce::String(owner.engine.pluginOutputChannelCountAt(row)),
-                    {88, 30, nameWidth, 14}, juce::Colour(textFaint), 8.5f);
+        const auto details = missing
+            ? juce::String("MISSING PLUG-IN - AUDIO PASSES THROUGH")
+            : "VST3  " + juce::String(owner.engine.pluginInputChannelCountAt(row))
+                + " -> " + juce::String(owner.engine.pluginOutputChannelCountAt(row));
+        drawCaption(g, details, {88, 30, nameWidth, 14},
+                    missing ? juce::Colour(0xffffa45b) : juce::Colour(textFaint), 8.5f);
 
         // Drag handle.
         g.setColour(juce::Colour(textFaint));
@@ -611,17 +615,21 @@ public:
 private:
     void timerCallback() override
     {
+        const auto missing = owner.engine.isPluginMissing(row);
         const auto bypassed = owner.engine.isBypassed(row);
-        power.setButtonText(bypassed ? "OFF" : "ON");
-        power.setComponentID(bypassed ? "secondary" : "primary");
+        power.setButtonText(missing ? "!" : bypassed ? "OFF" : "ON");
+        power.setEnabled(!missing);
+        power.setComponentID(missing || bypassed ? "secondary" : "primary");
         power.repaint();
     }
 
     void showMenu()
     {
         juce::PopupMenu popup;
-        popup.addItem(1, "Open editor");
-        popup.addItem(2, owner.engine.isBypassed(row) ? "Enable effect" : "Bypass effect");
+        const auto missing = owner.engine.isPluginMissing(row);
+        popup.addItem(1, "Open editor", !missing);
+        popup.addItem(2, owner.engine.isBypassed(row) ? "Enable effect" : "Bypass effect",
+                      !missing);
         popup.addSeparator();
         popup.addItem(3, "Move up", row > 0);
         popup.addItem(4, "Move down", row + 1 < owner.engine.pluginCount());
@@ -1232,6 +1240,7 @@ void MainComponent::activateProfile(const inputrack::WorkflowProfile& profile, b
             showError("Could not load profile", error);
             return;
         }
+        const auto restoreWarning = error;
         juce::AudioDeviceManager::AudioDeviceSetup setup;
         engine.deviceManager().getAudioDeviceSetup(setup);
         if (profile.inputDevice.isNotEmpty()) setup.inputDeviceName = profile.inputDevice;
@@ -1244,8 +1253,10 @@ void MainComponent::activateProfile(const inputrack::WorkflowProfile& profile, b
         saveSettings();
         refreshDeviceSelectors();
         refresh();
-        status.setText((automatic ? "Automatically selected \"" : "Selected \"")
-                           + profile.name + "\".",
+        status.setText(restoreWarning.isNotEmpty()
+                           ? "Profile loaded with unavailable plug-ins; audio passes through them."
+                           : (automatic ? "Automatically selected \"" : "Selected \"")
+                               + profile.name + "\".",
                        juce::dontSendNotification);
     } catch (const std::exception& exception) {
         showError("Invalid profile", exception.what());
@@ -1484,6 +1495,11 @@ void MainComponent::runRoutingTest()
 void MainComponent::selectAndOpenPlugin(int row)
 {
     if (!juce::isPositiveAndBelow(row, engine.pluginCount())) return;
+    if (engine.isPluginMissing(row)) {
+        showError("Plug-in unavailable",
+                  "This rack entry is a pass-through placeholder. Install and scan the plug-in, then reload the preset.");
+        return;
+    }
     chainList.selectRow(row);
     openSelectedPlugin();
 }
@@ -1718,6 +1734,8 @@ void MainComponent::loadPreset()
                 juce::String error;
                 if (!engine.restoreState(inputrack::ChainState::fromJson(file.loadFileAsString()), error))
                     showError("Could not restore preset", error);
+                else if (error.isNotEmpty())
+                    showError("Preset loaded with missing plug-ins", error);
                 refresh();
             } catch (const std::exception& e) { showError("Invalid preset", e.what()); }
         });
@@ -1760,7 +1778,9 @@ void MainComponent::recoverFromUncleanShutdown()
     try {
         juce::String error;
         if (engine.restoreState(inputrack::ChainState::fromJson(recovery.loadFileAsString()), error))
-            status.setText("Recovered your rack after an unexpected shutdown.",
+            status.setText(error.isNotEmpty()
+                               ? "Recovered your rack with pass-through placeholders for unavailable plug-ins."
+                               : "Recovered your rack after an unexpected shutdown.",
                            juce::dontSendNotification);
     } catch (const std::exception&) {
         // A damaged recovery file is not worth surfacing as an error; the

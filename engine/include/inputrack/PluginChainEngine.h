@@ -52,6 +52,7 @@ public:
     /** True when the name matches a known virtual audio cable. */
     static bool looksLikeVirtualCable(const juce::String& deviceName);
     juce::AudioPluginInstance* pluginAt(int) const;
+    bool isPluginMissing(int) const noexcept;
     int pluginInputChannelCountAt(int) const;
     int pluginOutputChannelCountAt(int) const;
     int pluginCount() const noexcept;
@@ -66,10 +67,12 @@ private:
         juce::AudioProcessorGraph::Node::Ptr outputAdapter;
         int inputChannelCount{};
         int outputChannelCount{};
+        bool missing{};
         bool bypassed{};
     };
     std::optional<HostedPlugin> createHostedPlugin(const juce::PluginDescription&,
                                                    juce::String& error);
+    std::optional<HostedPlugin> createMissingPlugin(const juce::PluginDescription&);
     void removeHostedPlugin(const HostedPlugin&);
     bool rebuildConnections();
     double activeSampleRate{defaultSampleRate};

@@ -105,17 +105,29 @@ int main()
     broken.addPlugin(description("Replacement", "replacement"), {});
     broken.addPlugin(description("Unavailable A", "missing-a"), {});
     broken.addPlugin(description("Unavailable B", "missing-b"), {});
-    expect(!engine.restoreState(broken, error), "a preset with a missing plug-in is rejected");
-    expect(engine.pluginCount() == 1 && engine.pluginAt(0) == existing,
-           "a failed restore leaves the current rack untouched");
+    expect(engine.restoreState(broken, error),
+           "a preset with missing plug-ins loads with placeholders");
+    expect(engine.pluginCount() == 3 && engine.pluginAt(0) != existing,
+           "the available part of the restored rack replaces the previous rack");
+    expect(!engine.isPluginMissing(0) && engine.isPluginMissing(1)
+               && engine.isPluginMissing(2),
+           "only unavailable entries are marked as missing");
+    expect(engine.pluginAt(1)->getName().contains("Unavailable A")
+               && engine.pluginAt(1)->getName().containsIgnoreCase("missing"),
+           "a missing entry is visible by its original name");
     expect(error.contains("Unavailable A") && error.contains("Unavailable B")
-               && error.contains("unchanged"),
-           "the restore error names every missing plug-in and the safe outcome");
+               && error.containsIgnoreCase("pass through"),
+           "the restore warning names every missing plug-in and the safe behavior");
+    const auto preserved = engine.captureState();
+    expect(preserved.size() == 3
+               && preserved.pluginAt(1).getProperty("fileOrIdentifier") == "missing-a",
+           "saving the rack preserves a missing plug-in for a later machine");
 
     inputrack::ChainState valid;
     valid.addPlugin(description("Replacement", "replacement"), {});
     error.clear();
     expect(engine.restoreState(valid, error), "a complete preset is restored");
+    expect(error.isEmpty(), "a complete preset produces no missing-plug-in warning");
     expect(engine.pluginCount() == 1 && engine.pluginAt(0)->getName() == "Replacement",
            "a successful restore atomically replaces the rack");
 
