@@ -1,4 +1,4 @@
-name: Windows release
+name: Windows validation
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: read
 
 jobs:
-  build-windows-installer:
+  validate-windows-builds:
     runs-on: windows-2022
     timeout-minutes: 45
 
@@ -55,17 +55,6 @@ jobs:
         shell: pwsh
         run: ctest --test-dir build/windows-release-ci -C Release --output-on-failure
 
-      - name: Install Inno Setup
-        shell: pwsh
-        run: choco install innosetup --yes --no-progress
-
-      - name: Build setup executable
-        shell: pwsh
-        run: >-
-          .\installer\windows\build-installer.ps1
-          -Version $env:INPUTRACK_VERSION
-          -BuildDirectory build/windows-release-ci
-
       - name: Build Microsoft Store MSIX
         shell: pwsh
         run: >-
@@ -78,6 +67,6 @@ jobs:
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: InputRack-${{ env.INPUTRACK_VERSION }}-Windows-x64
-          path: out/windows/*
+          name: InputRack-${{ env.INPUTRACK_VERSION }}-Store-test-package
+          path: out/windows/InputRack-${{ env.INPUTRACK_VERSION }}-Windows-x64.msix
           if-no-files-found: error

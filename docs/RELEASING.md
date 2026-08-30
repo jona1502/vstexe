@@ -1,13 +1,17 @@
 # Releasing InputRack
 
-## Internal Windows installer
+## Local development installer and CI validation
 
-The `Windows release` GitHub Actions workflow is manual. It builds the statically
-linked x64 desktop application, runs all tests, and stores the direct installer,
-checksum and development-identity MSIX as workflow artifacts for internal QA.
-It never publishes GitHub Release assets. Production distribution is exclusively
-through the Microsoft Store so the durable Pro entitlement cannot be bypassed by
-a public direct build with development access enabled.
+The `Windows validation` GitHub Actions workflow is manual. It builds the
+statically linked x64 desktop application, runs all tests, and stores only a
+development-identity MSIX as a workflow artifact for internal QA. It never
+uploads the direct installer or publishes GitHub Release assets. Production
+distribution is exclusively through the Microsoft Store, so the durable Pro
+entitlement cannot be bypassed through a downloadable CI installer.
+
+Local non-Store builds intentionally keep Pro enabled for development. A direct
+installer can still be created locally when needed, but it must not be uploaded
+as a public or Actions artifact.
 
 For a local package build, first build the release preset and then run:
 
