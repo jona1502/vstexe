@@ -1181,7 +1181,7 @@ void MainComponent::showPresetMenu()
         inputrack::ProductFeature::workflowProfiles, entitlement->state());
     popup.addItem(10, hasProAccess ? "Save current rack as profile..."
                                   : "Save current rack as profile... (Pro)",
-                  hasProAccess);
+                  true);
     const auto& stored = profiles.all();
     if (hasProAccess && !stored.isEmpty()) {
         popup.addSeparator();
@@ -1204,7 +1204,13 @@ void MainComponent::showPresetMenu()
             if (safeThis == nullptr) return;
             if (result == 1) safeThis->savePreset();
             else if (result == 2) safeThis->loadPreset();
-            else if (result == 10) safeThis->showSaveProfileDialog();
+            else if (result == 10) {
+                if (inputrack::hasFeatureAccess(inputrack::ProductFeature::workflowProfiles,
+                                                safeThis->entitlement->state()))
+                    safeThis->showSaveProfileDialog();
+                else
+                    safeThis->showProMenu();
+            }
             else if (result >= 300) safeThis->confirmDeleteProfile(result - 300);
             else if (result >= 200) safeThis->showSaveProfileDialog(result - 200);
             else if (result >= 100) safeThis->activateProfileAtIndex(result - 100);
@@ -1503,7 +1509,7 @@ void MainComponent::showApplicationMenu()
                          : hotkeyFailure.isEmpty()
                              ? "Hotkeys active: Ctrl+Alt+B, Ctrl+Alt+1..9"
                              : "Some global hotkeys are unavailable",
-                  false);
+                  !hasProAccess);
 #if !INPUTRACK_STORE_BUILD
     popup.addSeparator();
     popup.addItem(3, "Check for updates");
@@ -1523,6 +1529,7 @@ void MainComponent::showApplicationMenu()
 #endif
             else if (result == 4) safeThis->rescanBlockedPlugins();
             else if (result == 5) juce::URL("ms-settings:startupapps").launchInDefaultBrowser();
+            else if (result == 6) safeThis->showProMenu();
             else if (result == 7) safeThis->showSetupAssistant();
         });
 }
