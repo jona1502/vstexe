@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include <inputrack/FeatureAccess.h>
 #include <inputrack/IsolatedPluginScanner.h>
 
 #include <cmath>
@@ -1146,7 +1147,8 @@ void MainComponent::showPluginBrowser()
 void MainComponent::showPresetMenu()
 {
     juce::PopupMenu popup;
-    const auto hasProAccess = entitlement->state().hasProAccess();
+    const auto hasProAccess = inputrack::hasFeatureAccess(
+        inputrack::ProductFeature::workflowProfiles, entitlement->state());
     popup.addItem(10, hasProAccess ? "Save current rack as profile..."
                                   : "Save current rack as profile... (Pro)",
                   hasProAccess);
@@ -1258,7 +1260,8 @@ void MainComponent::activateProfileAtIndex(int index)
 
 void MainComponent::pollAutomaticProfile()
 {
-    if (!entitlement->state().hasProAccess()) return;
+    if (!inputrack::hasFeatureAccess(inputrack::ProductFeature::automaticProfiles,
+                                     entitlement->state())) return;
     const auto executable = foregroundExecutable();
     if (executable.isEmpty() || executable.equalsIgnoreCase("InputRack.exe")) return;
     lastExternalApplication = executable;
@@ -1352,7 +1355,9 @@ void MainComponent::updateEntitlementUi(const inputrack::EntitlementResult& resu
         : result.trial ? "Trial " + juce::String(result.trialDaysRemaining) + "d"
                        : "Get Pro");
     proButton.setComponentID(result.hasProAccess() ? "secondary" : "primary");
-    if (result.hasProAccess() && globalHotkeys == nullptr) {
+    const auto hasHotkeyAccess = inputrack::hasFeatureAccess(
+        inputrack::ProductFeature::globalHotkeys, result);
+    if (hasHotkeyAccess && globalHotkeys == nullptr) {
         globalHotkeys = std::make_unique<GlobalHotkeys>(
             [this] { toggleGlobalBypass(); },
             [this](int index) { activateProfileAtIndex(index); });
@@ -1360,7 +1365,7 @@ void MainComponent::updateEntitlementUi(const inputrack::EntitlementResult& resu
             if (const auto profile = profiles.find(activeProfileName); profile.has_value())
                 activateProfile(*profile);
         }
-    } else if (!result.hasProAccess()) {
+    } else if (!hasHotkeyAccess) {
         globalHotkeys.reset();
     }
     if (result.message.isNotEmpty()) status.setText(result.message, juce::dontSendNotification);
@@ -1378,7 +1383,8 @@ void MainComponent::showApplicationMenu()
     popup.addItem(4, "Rescan " + juce::String(blocked.size()) + " skipped plug-in"
                       + (blocked.size() == 1 ? "" : "s"),
                   !blocked.isEmpty());
-    const auto hasProAccess = entitlement->state().hasProAccess();
+    const auto hasProAccess = inputrack::hasFeatureAccess(
+        inputrack::ProductFeature::globalHotkeys, entitlement->state());
     popup.addItem(5, "Windows startup settings...");
     popup.addItem(6, hasProAccess
                          ? "Hotkeys: Ctrl+Alt+B, Ctrl+Alt+1..9"

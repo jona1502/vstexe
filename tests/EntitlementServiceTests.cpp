@@ -1,4 +1,5 @@
 #include <inputrack/EntitlementService.h>
+#include <inputrack/FeatureAccess.h>
 #include <inputrack/TrialPolicy.h>
 
 #include <cstdint>
@@ -22,6 +23,18 @@ int main()
     inputrack::EntitlementResult trial{false, true, false, 14, {}};
     inputrack::EntitlementResult permanent{true, false, false, 0, {}};
     if (free.hasProAccess() || !trial.hasProAccess() || !permanent.hasProAccess()) return 3;
+    using inputrack::ProductFeature;
+    if (!inputrack::hasFeatureAccess(ProductFeature::rackPresets, free)
+        || !inputrack::hasFeatureAccess(ProductFeature::windowsStartup, free)
+        || inputrack::hasFeatureAccess(ProductFeature::workflowProfiles, free)
+        || inputrack::hasFeatureAccess(ProductFeature::automaticProfiles, free)
+        || inputrack::hasFeatureAccess(ProductFeature::globalHotkeys, free)) return 9;
+    for (const auto feature : {ProductFeature::workflowProfiles,
+                               ProductFeature::automaticProfiles,
+                               ProductFeature::globalHotkeys}) {
+        if (!inputrack::hasFeatureAccess(feature, trial)
+            || !inputrack::hasFeatureAccess(feature, permanent)) return 10;
+    }
 
     const auto service = inputrack::EntitlementService::create();
     if (!service->state().hasProAccess() || service->state().trial

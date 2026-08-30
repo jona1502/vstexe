@@ -1,5 +1,6 @@
 add_library(inputrack_commerce STATIC
     src/EntitlementService.cpp
+    src/FeatureAccess.cpp
     src/TrialPolicy.cpp)
 target_include_directories(inputrack_commerce PUBLIC include)
 target_link_libraries(inputrack_commerce PUBLIC
