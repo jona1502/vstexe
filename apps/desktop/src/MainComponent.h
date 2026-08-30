@@ -87,8 +87,9 @@ private:
     void selectSampleRate(double);
     void showPluginBrowser();
     void showPresetMenu();
-    void showSaveProfileDialog();
+    void showSaveProfileDialog(int profileIndex = -1);
     void saveProfileFromDialog();
+    void confirmDeleteProfile(int index);
     void activateProfile(const inputrack::WorkflowProfile&, bool automatic = false);
     void activateProfileAtIndex(int index);
     void pollAutomaticProfile();
@@ -131,6 +132,7 @@ private:
     bool restoreActiveProfile{true};
     juce::String lastExternalApplication;
     std::unique_ptr<juce::AlertWindow> profileDialog;
+    int profileDialogEditIndex{-1};
     std::unique_ptr<juce::AlertWindow> setupDialog;
     std::unique_ptr<GlobalHotkeys> globalHotkeys;
     double storedSampleRate{};

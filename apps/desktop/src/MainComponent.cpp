@@ -1165,7 +1165,12 @@ void MainComponent::showPresetMenu()
         popup.addSeparator();
         for (int i = 0; i < stored.size(); ++i) {
             const auto suffix = stored.getReference(i).name == activeProfileName ? "  (active)" : "";
-            popup.addItem(100 + i, stored.getReference(i).name + suffix);
+            juce::PopupMenu profileMenu;
+            profileMenu.addItem(100 + i, "Activate");
+            profileMenu.addItem(200 + i, "Edit name and app bindings...");
+            profileMenu.addSeparator();
+            profileMenu.addItem(300 + i, "Delete profile...");
+            popup.addSubMenu(stored.getReference(i).name + suffix, profileMenu);
         }
     }
     popup.addSeparator();
@@ -1178,19 +1183,31 @@ void MainComponent::showPresetMenu()
             if (result == 1) safeThis->savePreset();
             else if (result == 2) safeThis->loadPreset();
             else if (result == 10) safeThis->showSaveProfileDialog();
+            else if (result >= 300) safeThis->confirmDeleteProfile(result - 300);
+            else if (result >= 200) safeThis->showSaveProfileDialog(result - 200);
             else if (result >= 100) safeThis->activateProfileAtIndex(result - 100);
         });
 }
 
-void MainComponent::showSaveProfileDialog()
+void MainComponent::showSaveProfileDialog(int profileIndex)
 {
+    profileDialogEditIndex = juce::isPositiveAndBelow(profileIndex, profiles.all().size())
+        ? profileIndex : -1;
+    const auto editing = profileDialogEditIndex >= 0;
+    const auto existing = editing
+        ? std::optional<inputrack::WorkflowProfile>{profiles.all().getReference(profileDialogEditIndex)}
+        : profiles.find(activeProfileName);
     profileDialog = std::make_unique<juce::AlertWindow>(
-        "Save profile", "Store this rack, its devices and optional app bindings.",
+        editing ? "Edit profile" : "Save profile",
+        editing ? "Update the profile name and automatic app bindings."
+                : "Store this rack, its devices and optional app bindings.",
         juce::MessageBoxIconType::NoIcon);
-    const auto suggested = activeProfileName.isNotEmpty()
-        ? activeProfileName : "Profile " + juce::String(profiles.all().size() + 1);
+    const auto suggested = existing.has_value()
+        ? existing->name : "Profile " + juce::String(profiles.all().size() + 1);
+    const auto applicationText = existing.has_value()
+        ? existing->applications.joinIntoString(", ") : lastExternalApplication;
     profileDialog->addTextEditor("name", suggested, "Profile name");
-    profileDialog->addTextEditor("applications", lastExternalApplication,
+    profileDialog->addTextEditor("applications", applicationText,
                                  "Applications (comma-separated .exe names)");
     profileDialog->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
     profileDialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
@@ -1200,6 +1217,7 @@ void MainComponent::showSaveProfileDialog()
             if (safeThis == nullptr) return;
             if (result == 1) safeThis->saveProfileFromDialog();
             safeThis->profileDialog.reset();
+            safeThis->profileDialogEditIndex = -1;
         }), false);
 }
 
@@ -1211,23 +1229,65 @@ void MainComponent::saveProfileFromDialog()
         showError("Profile name required", "Enter a name before saving the profile.");
         return;
     }
-    juce::AudioDeviceManager::AudioDeviceSetup setup;
-    engine.deviceManager().getAudioDeviceSetup(setup);
     auto applications = juce::StringArray::fromTokens(
         profileDialog->getTextEditorContents("applications"), ",;", "");
     applications.trim();
     applications.removeEmptyStrings();
-    profiles.upsert({name, setup.inputDeviceName, setup.outputDeviceName,
-                     applications, engine.captureState().toJson()});
+    auto originalName = juce::String{};
+    if (juce::isPositiveAndBelow(profileDialogEditIndex, profiles.all().size())) {
+        auto edited = profiles.all().getReference(profileDialogEditIndex);
+        originalName = edited.name;
+        edited.name = name;
+        edited.applications = applications;
+        if (!originalName.equalsIgnoreCase(name)) profiles.remove(originalName);
+        profiles.upsert(std::move(edited));
+    } else {
+        juce::AudioDeviceManager::AudioDeviceSetup setup;
+        engine.deviceManager().getAudioDeviceSetup(setup);
+        profiles.upsert({name, setup.inputDeviceName, setup.outputDeviceName,
+                         applications, engine.captureState().toJson()});
+    }
     juce::String error;
     if (!profiles.save(error)) {
         showError("Could not save profile", error);
         return;
     }
-    activeProfileName = name;
+    if (profileDialogEditIndex < 0 || activeProfileName.equalsIgnoreCase(originalName))
+        activeProfileName = name;
     saveSettings();
     status.setText("Profile \"" + name + "\" saved. Ctrl+Alt+1..9 switches profiles.",
                    juce::dontSendNotification);
+}
+
+void MainComponent::confirmDeleteProfile(int index)
+{
+    if (!juce::isPositiveAndBelow(index, profiles.all().size())) return;
+    const auto profile = profiles.all().getReference(index);
+    const juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::AlertWindow::showAsync(
+        juce::MessageBoxOptions()
+            .withIconType(juce::MessageBoxIconType::WarningIcon)
+            .withTitle("Delete profile?")
+            .withMessage("Delete \"" + profile.name + "\"? Rack presets are not affected.")
+            .withButton("Delete")
+            .withButton("Cancel")
+            .withAssociatedComponent(this),
+        [safeThis, profile](int result) {
+            if (safeThis == nullptr || result != 1) return;
+            if (!safeThis->profiles.remove(profile.name)) return;
+            juce::String error;
+            if (!safeThis->profiles.save(error)) {
+                safeThis->profiles.upsert(profile);
+                safeThis->showError("Could not delete profile", error);
+                return;
+            }
+            if (safeThis->activeProfileName.equalsIgnoreCase(profile.name)) {
+                safeThis->activeProfileName.clear();
+                safeThis->saveSettings();
+            }
+            safeThis->status.setText("Profile \"" + profile.name + "\" deleted.",
+                                     juce::dontSendNotification);
+        });
 }
 
 void MainComponent::activateProfile(const inputrack::WorkflowProfile& profile, bool automatic)

@@ -4,7 +4,7 @@
 int main()
 {
     auto directory = juce::File::getSpecialLocation(juce::File::tempDirectory)
-        .getNonexistentChildFile("inputrack-profile-test", {}, false);
+        .getChildFile("inputrack-profile-test-" + juce::Uuid().toString());
     if (!directory.createDirectory()) return 1;
     const auto file = directory.getChildFile("profiles.json");
     inputrack::ProfileStore store(file);
