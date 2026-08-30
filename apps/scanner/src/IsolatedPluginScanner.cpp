@@ -79,8 +79,11 @@ ScanOutcome IsolatedPluginScanner::scan(
     if (!helper.existsAsFile() || formatName.isEmpty() || fileOrIdentifier.isEmpty())
         return ScanOutcome::unavailable;
 
+    // getNonexistentChildFile is only a check and races when Release and Store
+    // validation scan in parallel. A per-attempt UUID keeps helpers from
+    // deleting or parsing each other's result file.
     const auto output = juce::File::getSpecialLocation(juce::File::tempDirectory)
-        .getNonexistentChildFile("inputrack-plugin-scan", ".xml", false);
+        .getChildFile("inputrack-plugin-scan-" + juce::Uuid().toString() + ".xml");
     output.deleteFile();
 
     juce::StringArray arguments;

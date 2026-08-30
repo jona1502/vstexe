@@ -1,5 +1,6 @@
 #include <inputrack/IsolatedPluginScanner.h>
 #include <chrono>
+#include <future>
 #include <memory>
 #include <iostream>
 #include <thread>
@@ -70,6 +71,17 @@ int main(int argc, char* argv[])
     inputrack::IsolatedPluginScanner patient(executable, 30000, timeouts);
     expect(patient.scan("VST3", "chatty", found) == inputrack::ScanOutcome::described,
            "a helper that fills the output pipe still finishes");
+
+    const auto concurrentScan = [&patient] {
+        juce::OwnedArray<juce::PluginDescription> concurrentFound;
+        return patient.scan("VST3", "safe", concurrentFound)
+                   == inputrack::ScanOutcome::described
+            && concurrentFound.size() == 1;
+    };
+    auto firstConcurrent = std::async(std::launch::async, concurrentScan);
+    auto secondConcurrent = std::async(std::launch::async, concurrentScan);
+    expect(firstConcurrent.get() && secondConcurrent.get(),
+           "parallel scans keep their temporary results isolated");
 
     inputrack::IsolatedPluginScanner impatient(executable, 50, timeouts);
     expect(impatient.scan("VST3", "hang", found) == inputrack::ScanOutcome::timedOut,
