@@ -1,4 +1,5 @@
 #include <inputrack/EntitlementService.h>
+#include <inputrack/TrialPolicy.h>
 
 #if INPUTRACK_STORE_BUILD && JUCE_WINDOWS
 #include <windows.h>
@@ -21,14 +22,11 @@ EntitlementResult localTrialState()
     unsigned long long started{};
     const auto found = RegGetValueW(HKEY_CURRENT_USER, trialRegistryPath, trialRegistryValue,
                                     RRF_RT_REG_QWORD, &type, &started, &size) == ERROR_SUCCESS;
-    if (!found) return {false, false, true, 0, {}};
     const auto now = static_cast<unsigned long long>(juce::Time::currentTimeMillis() / 1000);
-    const auto elapsed = now > started ? now - started : 0;
-    constexpr auto secondsPerDay = 24ULL * 60ULL * 60ULL;
-    constexpr auto trialSeconds = trialLengthDays * secondsPerDay;
-    if (elapsed >= trialSeconds) return {false, false, false, 0, {}};
-    const auto remaining = trialSeconds - elapsed;
-    return {false, true, false, static_cast<int>((remaining + secondsPerDay - 1) / secondsPerDay), {}};
+    const auto trial = evaluateTrialState(
+        found ? std::optional<std::uint64_t>{started} : std::nullopt,
+        now, trialLengthDays);
+    return {false, trial.active, trial.available, trial.daysRemaining, {}};
 }
 
 bool beginLocalTrial()
