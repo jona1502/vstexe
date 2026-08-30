@@ -1256,9 +1256,19 @@ void MainComponent::saveProfileFromDialog()
     applications.trim();
     applications.removeEmptyStrings();
     auto originalName = juce::String{};
+    if (juce::isPositiveAndBelow(profileDialogEditIndex, profiles.all().size()))
+        originalName = profiles.all().getReference(profileDialogEditIndex).name;
+    const auto conflicts = profiles.applicationConflicts(
+        applications, originalName.isNotEmpty() ? originalName : name);
+    if (!conflicts.isEmpty()) {
+        showError("Application already assigned",
+                  "Each application can activate only one profile. Remove "
+                      + conflicts.joinIntoString(", ")
+                      + " from its existing profile before assigning it here.");
+        return;
+    }
     if (juce::isPositiveAndBelow(profileDialogEditIndex, profiles.all().size())) {
         auto edited = profiles.all().getReference(profileDialogEditIndex);
-        originalName = edited.name;
         edited.name = name;
         edited.applications = applications;
         if (!originalName.equalsIgnoreCase(name)) profiles.remove(originalName);

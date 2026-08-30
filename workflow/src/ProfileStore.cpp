@@ -97,6 +97,26 @@ std::optional<WorkflowProfile> ProfileStore::matchApplication(const juce::String
     return {};
 }
 
+juce::StringArray ProfileStore::applicationConflicts(
+    const juce::StringArray& applications,
+    const juce::String& excludedProfile) const
+{
+    juce::StringArray conflicts;
+    for (const auto& application : applications) {
+        const auto candidate = application.trim().toLowerCase();
+        if (candidate.isEmpty()) continue;
+        for (const auto& profile : profiles) {
+            if (profile.name.equalsIgnoreCase(excludedProfile)) continue;
+            for (const auto& boundApplication : profile.applications)
+                if (boundApplication.equalsIgnoreCase(candidate)) {
+                    conflicts.addIfNotAlreadyThere(candidate);
+                    break;
+                }
+        }
+    }
+    return conflicts;
+}
+
 void ProfileStore::upsert(WorkflowProfile profile)
 {
     profile.name = profile.name.trim();

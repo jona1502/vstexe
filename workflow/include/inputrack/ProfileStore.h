@@ -21,6 +21,9 @@ public:
     const juce::Array<WorkflowProfile>& all() const noexcept;
     std::optional<WorkflowProfile> find(const juce::String& name) const;
     std::optional<WorkflowProfile> matchApplication(const juce::String& executable) const;
+    juce::StringArray applicationConflicts(
+        const juce::StringArray& applications,
+        const juce::String& excludedProfile = {}) const;
     void upsert(WorkflowProfile profile);
     bool remove(const juce::String& name);
 

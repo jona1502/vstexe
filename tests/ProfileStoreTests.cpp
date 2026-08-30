@@ -20,7 +20,10 @@ int main()
     if (!byName.has_value() || byName->outputDevice != "Cable Input") return 4;
     const auto byApplication = restored.matchApplication("DISCORD.EXE");
     if (!byApplication.has_value() || byApplication->name != "Streaming") return 5;
-    if (!restored.remove("STREAMING") || restored.find("Streaming").has_value()) return 6;
+    const auto conflicts = restored.applicationConflicts({"discord.exe", "game.exe"});
+    if (conflicts.size() != 1 || conflicts[0] != "discord.exe") return 6;
+    if (!restored.applicationConflicts({"DISCORD.EXE"}, "streaming").isEmpty()) return 7;
+    if (!restored.remove("STREAMING") || restored.find("Streaming").has_value()) return 8;
     directory.deleteRecursively();
     std::cout << "ProfileStore tests passed\n";
     return 0;
