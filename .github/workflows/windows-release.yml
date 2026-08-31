@@ -1,7 +1,15 @@
 name: Windows validation
 
 on:
+  push:
+    branches:
+      - main
+  pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: windows-validation-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -43,7 +51,7 @@ jobs:
           cmake -S . -B build/windows-store-ci
           -G "Visual Studio 17 2022" -A x64
           "-DINPUTRACK_VERSION=$env:INPUTRACK_VERSION"
-          -DINPUTRACK_BUILD_TESTS=OFF
+          -DINPUTRACK_BUILD_TESTS=ON
           -DINPUTRACK_STORE_BUILD=ON
           -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
 
@@ -51,9 +59,13 @@ jobs:
         shell: pwsh
         run: cmake --build build/windows-store-ci --config Release --parallel
 
-      - name: Run tests
+      - name: Run release tests
         shell: pwsh
         run: ctest --test-dir build/windows-release-ci -C Release --output-on-failure
+
+      - name: Run Microsoft Store tests
+        shell: pwsh
+        run: ctest --test-dir build/windows-store-ci -C Release --output-on-failure
 
       - name: Build Microsoft Store MSIX
         shell: pwsh
@@ -65,6 +77,7 @@ jobs:
           -Publisher "${{ vars.INPUTRACK_STORE_PUBLISHER || 'CN=InputRack Development' }}"
 
       - name: Upload workflow artifact
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: InputRack-${{ env.INPUTRACK_VERSION }}-Store-test-package
