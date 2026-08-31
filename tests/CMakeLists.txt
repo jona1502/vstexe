@@ -60,3 +60,7 @@ add_executable(entitlement_service_tests EntitlementServiceTests.cpp)
 target_link_libraries(entitlement_service_tests PRIVATE inputrack_commerce)
 add_test(NAME entitlement_service_tests COMMAND entitlement_service_tests)
 set_tests_properties(entitlement_service_tests PROPERTIES ENVIRONMENT "INPUTRACK_PRO=1")
+
+add_executable(entitlement_policy_tests EntitlementPolicyTests.cpp)
+target_link_libraries(entitlement_policy_tests PRIVATE inputrack_commerce)
+add_test(NAME entitlement_policy_tests COMMAND entitlement_policy_tests)

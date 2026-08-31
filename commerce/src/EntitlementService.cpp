@@ -1,4 +1,5 @@
 #include <inputrack/EntitlementService.h>
+#include <inputrack/EntitlementPolicy.h>
 #include <inputrack/TrialPolicy.h>
 
 #if INPUTRACK_STORE_BUILD && JUCE_WINDOWS
@@ -192,38 +193,26 @@ private:
             if (job == Job::purchasePro) {
                 const auto result = context.RequestPurchaseByInAppOfferTokenAsync(permanentToken).get();
                 using Status = winrt::Windows::Services::Store::StorePurchaseStatus;
-                auto current = state();
-                if (result.Status() == Status::Succeeded || result.Status() == Status::AlreadyPurchased) {
-                    current.permanent = true;
-                    current.trial = false;
-                    current.trialAvailable = false;
-                    current.trialDaysRemaining = 0;
-                    current.message = "InputRack Pro is ready.";
-                } else if (result.Status() == Status::NotPurchased) {
-                    current.message = "The purchase was cancelled.";
-                } else {
-                    current.message = "The Microsoft Store could not complete the request.";
-                }
-                finish(std::move(current));
+                const auto outcome = result.Status() == Status::Succeeded
+                                      || result.Status() == Status::AlreadyPurchased
+                    ? StorePurchaseOutcome::purchased
+                    : result.Status() == Status::NotPurchased
+                        ? StorePurchaseOutcome::cancelled
+                        : StorePurchaseOutcome::failed;
+                finish(resolveStorePurchase(state(), outcome));
                 return;
             }
 
             const auto license = context.GetAppLicenseAsync().get();
-            auto refreshed = localTrialState();
+            auto hasActivePermanentLicense = false;
             for (const auto& entry : license.AddOnLicenses()) {
                 const auto addOn = entry.Value();
-                if (addOn.InAppOfferToken() == permanentToken) refreshed.permanent = true;
+                if (addOn.InAppOfferToken() == permanentToken && addOn.IsActive()) {
+                    hasActivePermanentLicense = true;
+                    break;
+                }
             }
-            if (refreshed.permanent) {
-                refreshed.trial = false;
-                refreshed.trialAvailable = false;
-                refreshed.trialDaysRemaining = 0;
-                refreshed.message = "InputRack Pro purchase restored.";
-            }
-            else if (refreshed.trial)
-                refreshed.message = "InputRack Pro trial: "
-                    + juce::String(refreshed.trialDaysRemaining) + " day(s) remaining.";
-            finish(std::move(refreshed));
+            finish(resolveStoreLicense(localTrialState(), hasActivePermanentLicense));
         } catch (const winrt::hresult_error& error) {
             auto current = state();
             current.message = "Microsoft Store error 0x"
